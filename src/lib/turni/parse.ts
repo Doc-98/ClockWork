@@ -62,12 +62,12 @@ function iso(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-function giornoSettimana(v: CellValue): number {
+function giornoSettimana(v: CellValue | undefined): number {
   if (typeof v !== 'string') return -1;
   return GIORNI.indexOf(v.trim().toLowerCase().replace(/i$/, 'ì'));
 }
 
-function sezioneDi(v: CellValue): Area | undefined {
+function sezioneDi(v: CellValue | undefined): Area | undefined {
   if (typeof v !== 'string') return undefined;
   const s = v.toLowerCase();
   if (s.includes('spogliatoio') && s.includes('maschil')) return 'maschile';
@@ -78,7 +78,7 @@ function sezioneDi(v: CellValue): Area | undefined {
 }
 
 /** Data esplicita della cella: seriale Excel o testo "05-dic". */
-function dataDaCella(v: CellValue, anno?: number): Date | undefined {
+function dataDaCella(v: CellValue | undefined, anno?: number): Date | undefined {
   if (typeof v === 'number' && v > 30000 && v < 80000) return serialToDate(v);
   if (typeof v === 'string') {
     const m = /^\s*(\d{1,2})\s*[-/ ]\s*([a-z]{3})/i.exec(v);
@@ -132,7 +132,7 @@ interface Persona {
 }
 
 /** "BerettaC.*" → BerettaC. con presa; "(Ling)" → in prova; "Marta/GiuliaL." → due persone. */
-export function personeDaCella(v: CellValue): Persona[] {
+export function personeDaCella(v: CellValue | undefined): Persona[] {
   if (typeof v !== 'string') return [];
   return v
     .split('/')
