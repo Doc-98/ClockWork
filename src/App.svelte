@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { registerSW } from 'virtual:pwa-register';
   import { dati } from './lib/dati.svelte';
+  import { gcal } from './lib/gcal/stato.svelte';
   import { router } from './lib/router.svelte';
   import { chiediArchivioPersistente } from './lib/store';
   import Nav from './components/Nav.svelte';
@@ -16,7 +17,8 @@
   let aggiornamento = $state<(() => Promise<void>) | undefined>();
 
   onMount(async () => {
-    await dati.carica();
+    await Promise.all([dati.carica(), gcal.carica()]);
+    dati.suCambioTurni(() => gcal.segnaModifica());
     chiediArchivioPersistente();
     const update = registerSW({
       onNeedRefresh() {

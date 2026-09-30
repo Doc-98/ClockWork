@@ -6,6 +6,7 @@
   import { scaricaFile } from '../lib/foglio/condividi';
   import { ordinaTurni, type Turno } from '../lib/model';
   import Icona from '../components/Icona.svelte';
+  import CardCalendario from '../components/CardCalendario.svelte';
 
   let nome = $state(dati.impostazioni.alias.join(', '));
   let tariffa = $state(String(dati.impostazioni.tariffa).replace('.', ','));
@@ -99,6 +100,8 @@
     <label class="btn btn-secondary upload">Sostituisci il modello
       <input type="file" accept=".xlsx" onchange={cambiaModello} /></label>
   </div>
+
+  <CardCalendario />
 
   <div class="card box">
     <div>

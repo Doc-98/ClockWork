@@ -3,6 +3,15 @@
 PWA per organizzare i turni di lavoro e compilare il foglio ore mensile.
 Funziona offline e si installa su iPhone e Android dal browser, senza store.
 
+## Versione 0.3
+
+- **Google Calendar**: l'app crea un calendario suo («ClockWork · Leone XIII») e ci tiene allineati
+  i turni dal mese scorso in avanti; ogni modifica (importazione, sostituzione, turno annullato) viene
+  mandata subito se l'accesso è attivo, altrimenti compare «Sincronizza». Permesso minimo
+  `calendar.app.created`: gli altri calendari non vengono né letti né toccati.
+  Accesso OAuth in una finestra, compatibile con la PWA installata su iPhone (`public/oauth.html`).
+- **Esporta .ics** per chi usa un altro calendario.
+
 ## Versione 0.2
 
 - **Importa**: carichi il foglio turni «Assistenti Spogliatoio», scegli il mese e confermi i tuoi turni.
@@ -42,6 +51,15 @@ I test sul modello reale leggono `fixtures/private/generico.xlsx`, che **non** �
 A ogni push su `main`, GitHub Actions esegue controlli e test e pubblica su GitHub Pages
 (`.github/workflows/deploy.yml`). Nelle impostazioni del repository: Settings → Pages →
 Source: **GitHub Actions**.
+
+## Google Calendar: configurazione
+
+1. [console.cloud.google.com](https://console.cloud.google.com): nuovo progetto, abilita **Google Calendar API**.
+2. Google Auth Platform: app esterna, aggiungi il tuo account tra i **test user**, scope `calendar.app.created`.
+3. Client OAuth di tipo **Applicazione web**: origine `https://doc-98.github.io`, URI di reindirizzamento
+   `https://doc-98.github.io/ClockWork/oauth.html`.
+4. Nel repository: Settings → Secrets and variables → Actions → **Variables** → `GOOGLE_CLIENT_ID`.
+   (In alternativa il Client ID si può inserire nelle impostazioni dell'app.)
 
 ## Privacy
 

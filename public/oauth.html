@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>ClockWork · accesso</title>
+<style>
+  body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #f4f1ea; color: #10212b; font: 16px/1.4 system-ui, -apple-system, sans-serif; text-align: center; padding: 24px; box-sizing: border-box; }
+  p { max-width: 320px; }
+</style>
+</head>
+<body>
+<p id="msg">Accesso in corso…</p>
+<script>
+  // Riceve il token da Google (nel frammento #) e lo passa all'app, poi si chiude.
+  (function () {
+    var p = new URLSearchParams(location.hash.slice(1) || location.search.slice(1));
+    var dati = { tipo: 'clockwork-oauth' };
+    ['access_token', 'expires_in', 'state', 'error', 'scope'].forEach(function (k) { if (p.get(k)) dati[k] = p.get(k); });
+    history.replaceState(null, '', location.pathname); // il token non resta nella cronologia
+    try { new BroadcastChannel('clockwork-oauth').postMessage(dati); } catch (e) {}
+    try { if (window.opener) window.opener.postMessage(dati, location.origin); } catch (e) {}
+    document.getElementById('msg').textContent = dati.access_token
+      ? 'Fatto. Puoi tornare a ClockWork.'
+      : 'Accesso non completato. Puoi chiudere questa finestra e riprovare.';
+    setTimeout(function () { window.close(); }, 400);
+  })();
+</script>
+</body>
+</html>

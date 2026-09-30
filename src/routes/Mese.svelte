@@ -6,6 +6,7 @@
   import { MESI } from '../lib/foglio/genera';
   import RigaTurno from '../components/RigaTurno.svelte';
   import Icona from '../components/Icona.svelte';
+  import BannerCalendario from '../components/BannerCalendario.svelte';
 
   let { rotta }: { rotta: Extract<Rotta, { nome: 'mese' }> } = $props();
 
@@ -71,6 +72,8 @@
     </div>
     <button class="icon-btn" aria-label="Mese successivo" onclick={() => cambiaMese(1)}><Icona nome="dx" /></button>
   </header>
+
+  <BannerCalendario />
 
   <div class="card cal">
     <div class="grid wd">

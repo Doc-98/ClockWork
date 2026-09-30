@@ -36,6 +36,8 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         navigateFallback: 'index.html',
+        // la pagina di ritorno dal login Google non deve essere sostituita dall'app
+        navigateFallbackDenylist: [/oauth\.html/],
       },
     }),
   ],

@@ -6,6 +6,7 @@
   import { MESI } from '../lib/foglio/genera';
   import RigaTurno from '../components/RigaTurno.svelte';
   import Icona from '../components/Icona.svelte';
+  import BannerCalendario from '../components/BannerCalendario.svelte';
 
   let ora = $state(new Date());
   onMount(() => {
@@ -60,6 +61,8 @@
     </div>
     <a class="icon-btn" href="#/impostazioni" aria-label="Impostazioni"><Icona nome="impostazioni" /></a>
   </header>
+
+  <BannerCalendario />
 
   {#if principale}
     <a class="hero" href={`#/turno/${principale.id}`}>

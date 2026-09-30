@@ -32,6 +32,12 @@ class Dati {
   erroreSalvataggio = $state('');
 
   private coda: Promise<unknown> = Promise.resolve();
+  private ascoltatori: (() => void)[] = [];
+
+  /** Chiamata dopo ogni modifica ai turni (es. per aggiornare Google Calendar). */
+  suCambioTurni(fn: () => void) {
+    this.ascoltatori.push(fn);
+  }
 
   async carica() {
     const [turni, imp, scelte, modello, ultima] = await Promise.all([
@@ -58,9 +64,10 @@ class Dati {
     return this.coda;
   }
 
-  setTurni(turni: Turno[]) {
+  async setTurni(turni: Turno[]) {
     this.turni = [...turni].sort(ordinaTurni);
-    return this.salva(K.turni, this.turni);
+    await this.salva(K.turni, this.turni);
+    for (const fn of this.ascoltatori) fn();
   }
 
   salvaTurno(t: Turno) {
