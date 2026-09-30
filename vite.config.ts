@@ -6,8 +6,11 @@ import { VitePWA } from 'vite-plugin-pwa';
 // Su GitHub Pages il sito vive in /<nome-repo>/: il workflow passa BASE_PATH.
 const base = process.env.BASE_PATH ?? '/';
 
+import pkg from './package.json' with { type: 'json' };
+
 export default defineConfig({
   base,
+  define: { __APP_VERSION__: JSON.stringify(pkg.version) },
   plugins: [
     svelte(),
     VitePWA({

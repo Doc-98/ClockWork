@@ -3,13 +3,20 @@
 PWA per organizzare i turni di lavoro e compilare il foglio ore mensile.
 Funziona offline e si installa su iPhone e Android dal browser, senza store.
 
-## Versione 0.1
+## Versione 0.2
 
-- Caricamento del modello del foglio ore (.xlsx), salvato solo sul telefono.
-- Inserimento delle ore giorno per giorno (`3,75`, `3.75` o `3:45`) e delle note sulle sostituzioni.
-- Generazione del foglio ore identico al modello: ore nella colonna Q, note nella colonna R,
+- **Importa**: carichi il foglio turni «Assistenti Spogliatoio», scegli il mese e confermi i tuoi turni.
+  Mostra cosa è cambiato rispetto all'importazione precedente. Per gli orari doppi
+  (es. «15:30 / 15:45») chiede quale fai e ricorda la scelta.
+- **Oggi**: turno in corso o prossimo, ore del mese, accesso rapido a «Ho coperto un turno».
+- **Mese**: calendario con i turni per area e le sostituzioni.
+- **Sostituzioni e turni a mano**: scegli il collega dal foglio turni del giorno e l'app compila
+  area, orario e la nota per la colonna R (es. «sost greta spogl piccoli»).
+  Le importazioni successive non toccano sostituzioni e turni modificati a mano.
+- **Foglio ore**: calcolato dai turni del mese, identico al modello: ore nella colonna Q, note nella R,
   colonne O–P e cella Q45 svuotate (Q45 anche senza bordi), totale ricalcolato.
-- Condivisione diretta a WhatsApp o Mail dal menu Condividi del telefono, oppure scaricamento.
+  Condivisione a WhatsApp o Mail dal menu Condividi, oppure scaricamento.
+- **Impostazioni**: nome nel foglio turni, tariffa, modello, backup e ripristino.
 
 ## Come funziona il foglio ore
 

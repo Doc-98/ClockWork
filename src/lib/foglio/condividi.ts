@@ -20,8 +20,8 @@ export async function condividiFile(bytes: Uint8Array, nomeFile: string): Promis
   return 'scaricato';
 }
 
-export function scaricaFile(bytes: Uint8Array, nomeFile: string): void {
-  const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: XLSX_MIME }));
+export function scaricaFile(bytes: Uint8Array, nomeFile: string, mime = XLSX_MIME): void {
+  const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: mime }));
   const a = document.createElement('a');
   a.href = url;
   a.download = nomeFile;

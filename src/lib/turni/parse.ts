@@ -1,6 +1,15 @@
 import type { SheetData, CellValue } from '../xlsx/read';
 import { serialToDate } from '../xlsx/read';
-import { parseIntervallo, parseOraCella, type Minuti } from './orari';
+import { parseIntervallo, parseOraCella, frazioneToMinuti, minutiToHHMM, type Minuti } from './orari';
+
+/** Testo leggibile di una cella orario: le frazioni Excel diventano "19:15". */
+function testoOrario(v: CellValue | undefined): string {
+  if (typeof v === 'number') {
+    const m = frazioneToMinuti(v);
+    return m === null ? String(v) : minutiToHHMM(m);
+  }
+  return String(v ?? '').trim();
+}
 
 /**
  * Lettura del foglio turni "Assistenti Spogliatoio": un foglio per mese, quattro sezioni.
@@ -24,8 +33,13 @@ export interface TurnoLetto {
   fine: Minuti;
   presa: boolean;
   prova: boolean;
-  /** L'orario nel foglio era doppio (es. "15:30 / 15:45"): scelto in base all'asterisco */
+  /** L'orario nel foglio era doppio (es. "15:30 / 15:45"). inizio/fine sono una proposta: decide l'utente. */
   orarioDoppio: boolean;
+  /** Se doppio: le due alternative [prima, seconda] come scritte nel foglio */
+  opzioniInizio?: [Minuti, Minuti];
+  opzioniFine?: [Minuti, Minuti];
+  /** Testo originale delle celle orario (per riconoscere lo stesso caso alle importazioni successive) */
+  grezzo?: string;
   foglio: string;
   riga: number;
 }
@@ -260,13 +274,21 @@ function turniDaRiga(c: Colonne, cells: Map<number, CellValue>, data: string, fo
         avvisi.push(`${foglio}, riga ${riga}: orario incoerente per ${pers.nome}.`);
         continue;
       }
+      const doppio = ini.anticipato !== undefined || fin.anticipato !== undefined;
       out.push({
         ...base,
         postazione: n.postazione,
         ...pers,
         inizio,
         fine,
-        orarioDoppio: ini.anticipato !== undefined || fin.anticipato !== undefined,
+        orarioDoppio: doppio,
+        ...(doppio
+          ? {
+              opzioniInizio: [ini.anticipato ?? ini.normale, ini.normale] as [Minuti, Minuti],
+              opzioniFine: [fin.anticipato ?? fin.normale, fin.normale] as [Minuti, Minuti],
+              grezzo: `${testoOrario(cells.get(colInizio))} → ${testoOrario(cells.get(colFine))}`,
+            }
+          : {}),
       });
     }
   }
