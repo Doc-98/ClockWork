@@ -87,6 +87,7 @@
 <section class="page">
   <div class="top">
     <button class="link" onclick={() => router.indietro('#/')}><Icona nome="sx" /> Indietro</button>
+    <span class="muted small versione">Versione {__APP_VERSION__}</span>
   </div>
   <h1 class="page-title">Impostazioni</h1>
 
@@ -146,11 +147,11 @@
   {#if errore}<p class="msg err" role="alert">{errore}</p>{/if}
   {#if messaggio}<p class="msg ok" role="status">{messaggio}</p>{/if}
 
-  <p class="muted small">ClockWork {__APP_VERSION__}</p>
 </section>
 
 <style>
-  .top { min-height: 44px; display: flex; align-items: center; margin-bottom: -8px; }
+  .top { min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: -8px; }
+  .versione { font-variant-numeric: tabular-nums; }
   .box { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
   .personalizza { flex-direction: row; align-items: center; color: var(--ink); text-decoration: none; }
   .titolo-link { font-weight: 600; margin-top: 4px; }
