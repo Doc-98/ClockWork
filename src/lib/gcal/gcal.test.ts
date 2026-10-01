@@ -49,6 +49,15 @@ describe('piano di sincronizzazione', () => {
     expect(p.aggiorna.map((a) => [a.turno.id, a.eventId])).toEqual([['cambiato', 'e2']]);
     expect(p.elimina.map((e) => e.eventId).sort()).toEqual(['e1-doppione', 'e3', 'e4']);
   });
+  it('turni con id nuovi (dati cancellati e reimportati): riusa gli eventi con lo stesso orario', () => {
+    const vecchi = [t('a'), t('b', { data: '2026-10-03' })];
+    const remoti = vecchi.map((x, i) => remoto(x, `e${i}`));
+    const nuovi = [t('x'), t('y', { data: '2026-10-03' }), t('z', { data: '2026-10-04' })];
+    const p = pianoSync(nuovi, remoti);
+    expect(p.aggiorna.map((a) => [a.turno.id, a.eventId])).toEqual([['x', 'e0'], ['y', 'e1']]);
+    expect(p.crea.map((c) => c.turno.id)).toEqual(['z']);
+    expect(p.elimina).toEqual([]);
+  });
   it('seconda sincronizzazione senza cambiamenti: niente da fare', () => {
     const turni = [t('a'), t('b', { data: '2026-10-03' })];
     const p = pianoSync(turni, turni.map((x, i) => remoto(x, `e${i}`)));

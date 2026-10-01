@@ -26,7 +26,7 @@ Funziona offline e si installa su iPhone e Android dal browser, senza store.
 - **Google Calendar**: l'app crea un calendario suo («ClockWork · Leone XIII») e ci tiene allineati
   i turni dal mese scorso in avanti; ogni modifica (importazione, sostituzione, turno annullato) viene
   mandata subito se l'accesso è attivo, altrimenti compare «Sincronizza». Permesso minimo
-  `calendar.app.created`: gli altri calendari non vengono né letti né toccati.
+  `calendar.app.created`: gli eventi degli altri calendari non vengono né letti né toccati.
   Accesso OAuth in una finestra, compatibile con la PWA installata su iPhone (`public/oauth.html`).
 - **Esporta .ics** per chi usa un altro calendario.
 
@@ -73,7 +73,8 @@ Source: **GitHub Actions**.
 ## Google Calendar: configurazione
 
 1. [console.cloud.google.com](https://console.cloud.google.com): nuovo progetto, abilita **Google Calendar API**.
-2. Google Auth Platform: app esterna, aggiungi il tuo account tra i **test user**, scope `calendar.app.created`.
+2. Google Auth Platform: app esterna, aggiungi il tuo account tra i **test user**, scope `calendar.app.created`
+   e `calendar.calendarlist.readonly` (solo i nomi dei calendari: serve a ritrovare quello di ClockWork invece di crearne un doppione).
 3. Client OAuth di tipo **Applicazione web**: origine `https://doc-98.github.io`, URI di reindirizzamento
    `https://doc-98.github.io/ClockWork/oauth.html`.
 4. Nel repository: Settings → Secrets and variables → Actions → **Variables** → `GOOGLE_CLIENT_ID`.

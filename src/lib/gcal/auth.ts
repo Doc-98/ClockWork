@@ -5,13 +5,27 @@
  * tramite BroadcastChannel e si chiude.
  */
 
-export const SCOPE = 'https://www.googleapis.com/auth/calendar.app.created';
+/** Creare il calendario di ClockWork e gestirne gli eventi (solo i calendari creati dall'app). */
+export const SCOPE_CALENDARIO = 'https://www.googleapis.com/auth/calendar.app.created';
+/**
+ * Vedere l'elenco dei calendari (nomi, non eventi): serve a ritrovare il calendario di ClockWork
+ * quando l'app non se lo ricorda (dati cancellati, reinstallazione, altro dispositivo) invece di crearne un doppione.
+ */
+export const SCOPE_ELENCO = 'https://www.googleapis.com/auth/calendar.calendarlist.readonly';
+export const SCOPE = `${SCOPE_CALENDARIO} ${SCOPE_ELENCO}`;
 const CANALE = 'clockwork-oauth';
 
 export interface TokenGoogle {
   accessToken: string;
   /** epoch ms */
   scade: number;
+  /** Permessi concessi davvero (Google permette di togliere la spunta a quelli facoltativi) */
+  scope?: string;
+}
+
+/** Il token permette di vedere l'elenco dei calendari? (i token delle versioni precedenti no) */
+export function puoElencare(t: TokenGoogle | undefined): boolean {
+  return !!t?.scope?.split(' ').includes(SCOPE_ELENCO);
 }
 
 export class AccessoNegato extends Error {}
@@ -63,7 +77,7 @@ export function richiediToken(clientId: string, opzioni: { suggerimento?: string
       const m = d as Record<string, string>;
       if (m.tipo !== 'clockwork-oauth' || m.state !== state) return;
       fine();
-      if (m.access_token) resolve({ accessToken: m.access_token, scade: Date.now() + (Number(m.expires_in) || 3600) * 1000 - 60_000 });
+      if (m.access_token) resolve({ accessToken: m.access_token, scade: Date.now() + (Number(m.expires_in) || 3600) * 1000 - 60_000, scope: m.scope });
       else reject(new AccessoNegato(m.error === 'access_denied' ? 'Accesso non autorizzato.' : `Accesso non riuscito (${m.error ?? 'errore'}).`));
     };
     const suMessaggio = (e: MessageEvent) => {

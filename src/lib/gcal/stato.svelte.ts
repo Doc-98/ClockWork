@@ -1,6 +1,6 @@
 import { get, set, del } from 'idb-keyval';
 import { dati } from '../dati.svelte';
-import { richiediToken, type TokenGoogle } from './auth';
+import { richiediToken, puoElencare, type TokenGoogle } from './auth';
 import * as api from './api';
 import { pianoSync, inizioFinestra, type PianoSync } from './eventi';
 
@@ -32,6 +32,10 @@ class Gcal {
   lavoro = $state(false);
   errore = $state('');
   clientIdLocale = $state('');
+  /** Altri calendari di ClockWork trovati sull'account, oltre a quello collegato (doppioni) */
+  doppioni = $state<CalendarioClockWork[]>([]);
+  /** Quanti eventi di ClockWork ha il calendario collegato (per confrontarlo coi doppioni) */
+  eventiCollegato = $state(0);
 
   get clientId(): string {
     return CLIENT_ID_BUILD || this.clientIdLocale;
@@ -69,23 +73,62 @@ class Gcal {
     return t;
   }
 
-  /** Collega: accesso + creazione (o verifica) del calendario + prima sincronizzazione. */
+  /** Collega: accesso, ricerca del calendario esistente (o creazione) e prima sincronizzazione. */
   async collega() {
     this.errore = '';
     this.lavoro = true;
     try {
-      const t = this.tokenValido ? this.token! : await this.accedi();
-      // Un solo collegamento alla volta anche tra app installata e scheda del browser aperte insieme:
-      // senza, entrambe potevano non trovare il calendario e crearne uno ciascuna.
+      // Serve un token che possa vedere l'elenco dei calendari: quelli delle versioni precedenti no
+      const t = this.tokenValido && puoElencare(this.token) ? this.token! : await this.accedi();
+      // Un solo collegamento alla volta anche tra app installata e scheda del browser aperte insieme
       await esclusivo(async () => {
-        await this.carica(); // l'altra istanza potrebbe averlo appena creato
+        await this.carica(); // l'altra istanza potrebbe averlo appena collegato
         let calId = this.stato.calendarId ?? this.stato.calendarioPrecedente;
-        if (!calId || !(await api.esisteCalendario(t.accessToken, calId))) {
-          calId = await api.creaCalendario(t.accessToken, NOME_CALENDARIO);
+        if (calId && !(await api.esisteCalendario(t.accessToken, calId))) calId = undefined;
+        if (!calId && puoElencare(t)) {
+          // L'app non se lo ricorda (dati cancellati, altro dispositivo…): cerca quelli già creati
+          const trovati = await cercaCalendari(t.accessToken);
+          calId = trovati[0]?.id; // il più pieno
         }
+        calId ??= await api.creaCalendario(t.accessToken, NOME_CALENDARIO);
         await this.salvaStato({ ...this.stato, calendarId: calId, calendarioPrecedente: undefined });
       });
       await this.sincronizza();
+      await this.controllaDoppioni();
+    } catch (e) {
+      this.errore = messaggio(e);
+    } finally {
+      this.lavoro = false;
+    }
+  }
+
+  /** Cerca altri calendari di ClockWork oltre a quello collegato. Silenzioso se non si può. */
+  async controllaDoppioni() {
+    if (!this.collegato || !this.tokenValido || !puoElencare(this.token)) return;
+    const trovati = await cercaCalendari(this.token!.accessToken);
+    this.eventiCollegato = trovati.find((c) => c.id === this.stato.calendarId)?.eventi ?? this.eventiCollegato;
+    this.doppioni = trovati.filter((c) => c.id !== this.stato.calendarId);
+  }
+
+  /**
+   * Tiene solo il calendario indicato (quello collegato o uno dei doppioni) ed elimina gli altri di ClockWork.
+   * Il permesso calendar.app.created basta: l'app elimina solo calendari creati da lei.
+   */
+  async tieniSolo(calendarId: string) {
+    this.errore = '';
+    this.lavoro = true;
+    try {
+      if (!this.tokenValido || !puoElencare(this.token)) await this.accedi();
+      const token = this.token!.accessToken;
+      await esclusivo(async () => {
+        const tutti = await cercaCalendari(token);
+        if (!tutti.some((c) => c.id === calendarId)) throw new Error('Quel calendario non esiste più: riprova.');
+        await this.salvaStato({ ...this.stato, calendarId, daSincronizzare: true });
+        for (const c of tutti) if (c.id !== calendarId) await api.eliminaCalendario(token, c.id);
+      });
+      this.doppioni = [];
+      await this.sincronizza();
+      await this.controllaDoppioni();
     } catch (e) {
       this.errore = messaggio(e);
     } finally {
@@ -114,8 +157,9 @@ class Gcal {
     this.errore = '';
     this.lavoro = true;
     try {
-      if (!this.tokenValido) await this.accedi();
+      if (!this.tokenValido || !puoElencare(this.token)) await this.accedi();
       await this.sincronizza();
+      await this.controllaDoppioni();
     } catch (e) {
       this.errore = messaggio(e);
     } finally {
@@ -186,7 +230,36 @@ class Gcal {
     this.token = undefined;
     await del(K_TOKEN);
     await this.salvaStato(tenuto ? { calendarioPrecedente: tenuto } : {});
+    this.doppioni = [];
   }
+}
+
+export interface CalendarioClockWork {
+  id: string;
+  nome: string;
+  /** Eventi creati da ClockWork, dal mese scorso in avanti */
+  eventi: number;
+}
+
+/**
+ * Calendari di ClockWork sull'account, dal più pieno al più vuoto.
+ * Tiene solo quelli creati dall'app: gli altri (un calendario chiamato «ClockWork» a mano)
+ * con calendar.app.created non sono leggibili e vengono ignorati.
+ */
+async function cercaCalendari(token: string): Promise<CalendarioClockWork[]> {
+  const elenco = await api.elencaCalendariClockWork(token);
+  const da = `${inizioFinestra()}T00:00:00Z`;
+  const out: CalendarioClockWork[] = [];
+  for (const c of elenco) {
+    try {
+      const ev = await api.elencaEventi(token, c.id, da);
+      out.push({ id: c.id, nome: c.summary ?? NOME_CALENDARIO, eventi: ev.filter((e) => e.extendedProperties?.private?.clockworkId).length });
+    } catch (e) {
+      if (e instanceof api.CalendarioSparito || (e instanceof api.ErroreGoogle && (e.status === 403 || e.status === 404))) continue;
+      throw e;
+    }
+  }
+  return out.sort((a, b) => b.eventi - a.eventi);
 }
 
 /** Esegue fn con un lucchetto condiviso tra tutte le finestre dell'app (Web Locks), se disponibile. */

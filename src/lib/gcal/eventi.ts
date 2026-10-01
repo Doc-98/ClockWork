@@ -165,18 +165,31 @@ export function pianoSync(
     else perTurno.set(id, e);
   }
   const piano: PianoSync = { crea: [], aggiorna: [], elimina: [] };
-  const voluti = new Set<string>();
-  for (const t of turni) {
-    if (t.annullato) continue;
-    voluti.add(t.id);
+  const attivi = turni.filter((t) => !t.annullato);
+  const voluti = new Set(attivi.map((t) => t.id));
+  // Eventi di ClockWork il cui turno non c'è più con quell'id (es. dati cancellati e turni reimportati):
+  // se uno ha lo stesso orario di un turno senza evento, lo si riusa invece di eliminarlo e ricrearlo.
+  const orfani = new Map<string, EventoGoogle[]>();
+  for (const [id, e] of perTurno) {
+    if (voluti.has(id)) continue;
+    const k = `${e.start?.dateTime}|${e.end?.dateTime}`;
+    orfani.set(k, [...(orfani.get(k) ?? []), e]);
+  }
+  const riusati = new Set<string>();
+  for (const t of attivi) {
     const evento = eventoDaTurno(t, imp);
     const remoto = perTurno.get(t.id);
-    if (!remoto) piano.crea.push({ turno: t, evento });
-    else if (remoto.extendedProperties?.private?.clockworkFirma !== evento.extendedProperties!.private!.clockworkFirma) {
+    if (!remoto) {
+      const orfano = orfani.get(`${evento.start.dateTime}|${evento.end.dateTime}`)?.find((e) => !riusati.has(e.id!));
+      if (orfano) {
+        riusati.add(orfano.id!);
+        piano.aggiorna.push({ turno: t, evento, eventId: orfano.id! });
+      } else piano.crea.push({ turno: t, evento });
+    } else if (remoto.extendedProperties?.private?.clockworkFirma !== evento.extendedProperties!.private!.clockworkFirma) {
       piano.aggiorna.push({ turno: t, evento, eventId: remoto.id! });
     }
   }
-  for (const [id, e] of perTurno) if (!voluti.has(id)) piano.elimina.push({ eventId: e.id!, summary: e.summary });
+  for (const [id, e] of perTurno) if (!voluti.has(id) && !riusati.has(e.id!)) piano.elimina.push({ eventId: e.id!, summary: e.summary });
   for (const e of duplicati) piano.elimina.push({ eventId: e.id!, summary: e.summary });
   return piano;
 }

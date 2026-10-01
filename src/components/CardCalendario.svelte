@@ -10,6 +10,23 @@
   let clientId = $state(gcal.clientIdLocale);
   let messaggio = $state('');
 
+  // Doppioni: quale calendario tenere (di base il più pieno) e conferma col secondo tocco
+  const calendariTrovati = $derived(
+    gcal.doppioni.length
+      ? [{ id: gcal.stato.calendarId!, eventi: gcal.eventiCollegato, collegato: true }, ...gcal.doppioni.map((d) => ({ id: d.id, eventi: d.eventi, collegato: false }))]
+      : [],
+  );
+  let daTenere = $state<string | undefined>();
+  let confermaPulizia = $state(false);
+  const scelto = $derived(daTenere && calendariTrovati.some((c) => c.id === daTenere) ? daTenere : [...calendariTrovati].sort((a, b) => b.eventi - a.eventi)[0]?.id);
+  async function pulisci() {
+    if (!scelto) return;
+    if (!confermaPulizia) return (confermaPulizia = true);
+    confermaPulizia = false;
+    await gcal.tieniSolo(scelto);
+    if (!gcal.errore) messaggio = 'Fatto: ora c’è un solo calendario di ClockWork.';
+  }
+
   function esportaIcs() {
     const da = inizioFinestra();
     const turni = dati.turni.filter((t) => t.data >= da);
@@ -29,8 +46,9 @@
       </p>
     {:else}
       <p class="muted small">
-        L'app crea un calendario tutto suo, «{NOME_CALENDARIO}», e ci tiene allineati i tuoi turni dal mese scorso in avanti.
-        Gli altri tuoi calendari non vengono né letti né toccati.
+        L'app usa un calendario tutto suo, «{NOME_CALENDARIO}», e ci tiene allineati i tuoi turni dal mese scorso in avanti.
+        Se ne hai già uno creato da ClockWork lo ritrova, invece di crearne un altro: per questo chiede di vedere
+        l'elenco dei tuoi calendari (solo i nomi). Gli eventi degli altri calendari non vengono né letti né toccati.
       </p>
     {/if}
   </div>
@@ -60,6 +78,23 @@
     {/if}
   {/if}
 
+  {#if calendariTrovati.length}
+    <div class="doppioni" role="group" aria-labelledby="tit-doppioni">
+      <p class="tit" id="tit-doppioni">Hai {calendariTrovati.length} calendari di ClockWork</p>
+      <p class="small">Probabilmente creati da una versione precedente o da un altro dispositivo. Scegli quale tenere: gli altri vengono eliminati, compresi eventuali eventi aggiunti a mano lì dentro.</p>
+      {#each calendariTrovati as c, i (c.id)}
+        <label class="opzione">
+          <input type="radio" name="tieni" checked={scelto === c.id} onchange={() => { daTenere = c.id; confermaPulizia = false; }} />
+          <span class="grow">Calendario {i + 1}{c.collegato ? ' · in uso' : ''}</span>
+          <span class="m small">{c.eventi} {c.eventi === 1 ? 'turno' : 'turni'}</span>
+        </label>
+      {/each}
+      <button class="btn btn-danger" disabled={gcal.lavoro} onclick={pulisci}>
+        {confermaPulizia ? `Tocca di nuovo: elimino ${calendariTrovati.length - 1} ${calendariTrovati.length - 1 === 1 ? 'calendario' : 'calendari'}` : 'Tieni questo ed elimina gli altri'}
+      </button>
+    </div>
+  {/if}
+
   {#if gcal.errore}<p class="msg err" role="alert">{gcal.errore}</p>{/if}
 
   <div class="sep"></div>
@@ -79,4 +114,11 @@
   .scollega { display: flex; flex-direction: column; gap: 8px; }
   .sep { height: 1px; background: var(--line-soft); margin: 4px 0; }
   .m { word-break: break-all; }
+  .doppioni { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 12px; background: var(--warn-bg); color: var(--warn); border: 1px solid var(--warn-line); }
+  .doppioni .tit { font-weight: 700; margin: 0; }
+  .doppioni .small { margin: 0; }
+  .opzione { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 12px; border-radius: 10px; background: var(--surface); color: var(--ink); cursor: pointer; }
+  .opzione input { width: 20px; height: 20px; accent-color: var(--cloro); margin: 0; }
+  .opzione .m { word-break: normal; color: var(--muted); }
+  .doppioni .btn-danger { background: var(--surface); }
 </style>

@@ -95,3 +95,27 @@ export async function eliminaCalendario(token: string, calId: string) {
     if (!(e instanceof ErroreGoogle && (e.status === 404 || e.status === 410))) throw e;
   }
 }
+
+export interface CalendarioInElenco {
+  id: string;
+  summary?: string;
+  description?: string;
+}
+
+/**
+ * Calendari dell'account che sembrano di ClockWork (per nome o descrizione), di cui l'utente è proprietario.
+ * Serve il permesso calendarlist.readonly. Se ne trova uno con quel nome ma non creato dall'app,
+ * lo scarta poi chi chiama: con calendar.app.created i suoi eventi non sono leggibili.
+ */
+export async function elencaCalendariClockWork(token: string): Promise<CalendarioInElenco[]> {
+  const out: CalendarioInElenco[] = [];
+  let pageToken: string | undefined;
+  do {
+    const q = new URLSearchParams({ minAccessRole: 'owner', maxResults: '250' });
+    if (pageToken) q.set('pageToken', pageToken);
+    const r = await chiama<{ items?: CalendarioInElenco[]; nextPageToken?: string }>(token, 'GET', `/users/me/calendarList?${q}`);
+    out.push(...(r.items ?? []));
+    pageToken = r.nextPageToken;
+  } while (pageToken);
+  return out.filter((c) => /clockwork/i.test(c.summary ?? '') || /gestito da clockwork/i.test(c.description ?? ''));
+}
