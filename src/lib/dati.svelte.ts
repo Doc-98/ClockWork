@@ -20,6 +20,7 @@ const K = {
   impostazioni: 'impostazioni',
   scelte: 'scelte-orari',
   import: 'ultima-importazione',
+  esclusi: 'turni-esclusi',
 };
 
 class Dati {
@@ -29,6 +30,8 @@ class Dati {
   scelte = $state<ScelteOrari>({});
   modello = $state<ModelloSalvato | undefined>();
   ultimaImportazione = $state<UltimaImportazione | undefined>();
+  /** Turni del foglio che hai tolto in importazione (chiave data|area): gli aggiornamenti automatici non li rimettono */
+  esclusi = $state<string[]>([]);
   erroreSalvataggio = $state('');
 
   private coda: Promise<unknown> = Promise.resolve();
@@ -40,18 +43,20 @@ class Dati {
   }
 
   async carica() {
-    const [turni, imp, scelte, modello, ultima] = await Promise.all([
+    const [turni, imp, scelte, modello, ultima, esclusi] = await Promise.all([
       get<Turno[]>(K.turni),
       get<Impostazioni>(K.impostazioni),
       get<ScelteOrari>(K.scelte),
       leggiModello(),
       get<UltimaImportazione>(K.import),
+      get<string[]>(K.esclusi),
     ]);
     this.turni = (turni ?? []).sort(ordinaTurni);
     this.impostazioni = completaImpostazioni(imp);
     this.scelte = scelte ?? {};
     this.modello = modello;
     this.ultimaImportazione = ultima;
+    this.esclusi = esclusi ?? [];
     this.pronto = true;
   }
 
@@ -94,6 +99,13 @@ class Dati {
   setScelte(s: ScelteOrari) {
     this.scelte = s;
     return this.salva(K.scelte, s);
+  }
+
+  /** Sostituisce gli esclusi di un mese (YYYY-MM) con quelli nuovi */
+  setEsclusiMese(year: number, month: number, chiavi: string[]) {
+    const p = `${year}-${String(month).padStart(2, '0')}-`;
+    this.esclusi = [...this.esclusi.filter((k) => !k.startsWith(p)), ...chiavi];
+    return this.salva(K.esclusi, this.esclusi);
   }
 
   setUltimaImportazione(u: UltimaImportazione) {

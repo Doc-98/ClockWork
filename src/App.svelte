@@ -3,6 +3,7 @@
   import { registerSW } from 'virtual:pwa-register';
   import { dati } from './lib/dati.svelte';
   import { gcal } from './lib/gcal/stato.svelte';
+  import { fonte } from './lib/turni/fonte.svelte';
   import { router } from './lib/router.svelte';
   import { chiediArchivioPersistente } from './lib/store';
   import { swipe, animaIngresso } from './lib/swipe';
@@ -19,8 +20,14 @@
   let aggiornamento = $state<(() => Promise<void>) | undefined>();
 
   onMount(async () => {
-    await Promise.all([dati.carica(), gcal.carica()]);
+    await Promise.all([dati.carica(), gcal.carica(), fonte.carica()]);
     dati.suCambioTurni(() => gcal.segnaModifica());
+    // Foglio turni collegato: ricontrollo all'avvio e quando l'app torna in primo piano
+    // (fonte decide se è il momento: mese nuovo o qualche ora dall'ultimo controllo)
+    fonte.controlla(false);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') fonte.controlla(false);
+    });
     chiediArchivioPersistente();
     const update = registerSW({
       onNeedRefresh() {
@@ -82,7 +89,9 @@
   {:else if router.rotta.nome === 'mese'}
     <Mese rotta={router.rotta} />
   {:else if router.rotta.nome === 'importa'}
-    <Importa />
+    {#key router.rotta}
+      <Importa rotta={router.rotta} />
+    {/key}
   {:else if router.rotta.nome === 'turno'}
     {#key router.rotta}
       <TurnoView rotta={router.rotta} />

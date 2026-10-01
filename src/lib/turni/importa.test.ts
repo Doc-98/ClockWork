@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
-import { confronta, applicaImport, casiDoppi, applicaScelte, leggiFileTurni, chiaveDoppio } from './importa';
+import { confronta, applicaImport, casiDoppi, applicaScelte, leggiFileTurni, chiaveDoppio, chiaveTurno, pianoAggiornamento } from './importa';
 import type { TurnoLetto } from './parse';
 import type { Turno } from '../model';
 import { vociDaTurni } from '../foglio/daTurni';
@@ -101,5 +101,56 @@ describe.skipIf(!existsSync(FILE))('file reale', () => {
     const casi = casiDoppi(mar.miei, {});
     expect(casi.length).toBeGreaterThan(0);
     expect(f.mesi[0].nome).toBe('Dicembre 25');
+  });
+
+  const f = () => leggiFileTurni(new Uint8Array(readFileSync(FILE)), ['Vincenzo']);
+  const oggi = new Date(2026, 9, 2); // 2 ottobre: si guardano settembre e i mesi dopo
+  const importaMese = (turni: Turno[], nome: string) => {
+    const m = f().mesi.find((x) => x.nome === nome)!;
+    return applicaImport(turni, m.miei, m.year, m.month);
+  };
+
+  it('aggiornamento: mese nuovo applicato da solo, mesi vecchi ignorati', () => {
+    const piano = pianoAggiornamento(f(), [], {}, [], oggi);
+    expect(piano.some((m) => m.year === 2026 && m.month < 9)).toBe(false);
+    const ott = piano.find((m) => m.nome === 'Ottobre 26')!;
+    expect(ott).toMatchObject({ azione: 'applica', nuovi: 9, cambiati: 0, rimossi: 0 });
+  });
+
+  it('aggiornamento: niente di nuovo se già importato', () => {
+    const turni = importaMese(importaMese([], 'Settembre 26'), 'Ottobre 26');
+    const piano = pianoAggiornamento(f(), turni, {}, [], oggi);
+    expect(piano.filter((m) => m.azione !== 'nessuna')).toEqual([]);
+  });
+
+  it('aggiornamento: orario cambiato nel foglio → applicato', () => {
+    const turni = importaMese([], 'Ottobre 26').map((t, i) => (i === 0 ? { ...t, fine: t.fine - 30 } : t));
+    const ott = pianoAggiornamento(f(), turni, {}, [], oggi).find((m) => m.nome === 'Ottobre 26')!;
+    expect(ott).toMatchObject({ azione: 'applica', cambiati: 1 });
+  });
+
+  it('aggiornamento: turno sparito dal foglio → da rivedere', () => {
+    const extra: Turno = { id: 'x', data: '2026-10-30', area: 'atrio', inizio: 900, fine: 1200, origine: 'import' };
+    const ott = pianoAggiornamento(f(), [...importaMese([], 'Ottobre 26'), extra], {}, [], oggi).find((m) => m.nome === 'Ottobre 26')!;
+    expect(ott).toMatchObject({ azione: 'rivedi', rimossi: 1 });
+    expect(ott.motivo).toBe('un turno non è più nel foglio');
+  });
+
+  it('aggiornamento: turno che avevi escluso non torna', () => {
+    const m = f().mesi.find((x) => x.nome === 'Ottobre 26')!;
+    const via = chiaveTurno(m.miei[0]);
+    const turni = applicaImport([], m.miei.slice(1), m.year, m.month);
+    const ott = pianoAggiornamento(f(), turni, {}, [via], oggi).find((x) => x.nome === 'Ottobre 26')!;
+    expect(ott.azione).toBe('nessuna');
+  });
+
+  it('aggiornamento: orario doppio mai scelto → da rivedere; scelto → applicato', () => {
+    const marzo = new Date(2026, 2, 5);
+    const p1 = pianoAggiornamento(f(), [], {}, [], marzo).find((x) => x.nome === 'Marzo 26')!;
+    expect(p1.azione).toBe('rivedi');
+    const mar = f().mesi.find((x) => x.nome === 'Marzo 26')!;
+    const scelte = Object.fromEntries(casiDoppi(mar.miei, {}).map((c) => [c.chiave, c.proposta]));
+    const p2 = pianoAggiornamento(f(), [], scelte, [], marzo).find((x) => x.nome === 'Marzo 26')!;
+    expect(p2.azione).toBe('applica');
   });
 });

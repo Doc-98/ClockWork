@@ -7,6 +7,7 @@
   import RigaTurno from '../components/RigaTurno.svelte';
   import Icona from '../components/Icona.svelte';
   import BannerCalendario from '../components/BannerCalendario.svelte';
+  import BannerTurni from '../components/BannerTurni.svelte';
 
   let ora = $state(new Date());
   onMount(() => {
@@ -62,6 +63,7 @@
     <a class="icon-btn" href="#/impostazioni" aria-label="Impostazioni"><Icona nome="impostazioni" /></a>
   </header>
 
+  <BannerTurni />
   <BannerCalendario />
 
   {#if principale}

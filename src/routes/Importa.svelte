@@ -1,12 +1,18 @@
 <script lang="ts">
   import { dati } from '../lib/dati.svelte';
-  import { router } from '../lib/router.svelte';
+  import { untrack } from 'svelte';
+  import { router, type Rotta } from '../lib/router.svelte';
+  import { fonte } from '../lib/turni/fonte.svelte';
+  import { API_KEY_BUILD, FoglioNonRaggiungibile } from '../lib/turni/remoto';
   import { leggiFileTurni, casiDoppi, applicaScelte, confronta, applicaImport, chiaveTurno, type SceltaOrario, type FoglioTurniLetto } from '../lib/turni/importa';
   import { breveArea, nomeArea, hhmm, dataDa } from '../lib/model';
   import { oreTurno } from '../lib/turni/parse';
   import { formatOre } from '../lib/ore';
   import { MESI } from '../lib/foglio/genera';
   import Icona from '../components/Icona.svelte';
+
+  let { rotta }: { rotta: Extract<Rotta, { nome: 'importa' }> } = $props();
+  const meseIniziale = untrack(() => rotta.mese);
 
   let file = $state<{ nomeFile: string; bytes: Uint8Array } | undefined>(
     dati.ultimaImportazione ? { nomeFile: dati.ultimaImportazione.nomeFile, bytes: dati.ultimaImportazione.bytes } : undefined,
@@ -24,7 +30,7 @@
   });
 
   const oggi = new Date();
-  let meseScelto = $state<string | undefined>();
+  let meseScelto = $state<string | undefined>(meseIniziale);
   const mesiConDati = $derived(letto?.mesi ?? []);
   const meseDefault = $derived.by(() => {
     const qui = mesiConDati.find((m) => m.year === oggi.getFullYear() && m.month === oggi.getMonth() + 1 && m.miei.length);
@@ -40,6 +46,14 @@
   const confronto = $derived(mese ? confronta(dati.turni, risolti, mese.year, mese.month) : undefined);
 
   let esclusi = $state<Set<string>>(new Set());
+  // I turni che avevi tolto l'ultima volta restano tolti (anche per gli aggiornamenti automatici)
+  $effect(() => {
+    const m = mese;
+    if (!m) return;
+    const p = `${m.year}-${String(m.month).padStart(2, '0')}-`;
+    const salvati = dati.esclusi.filter((k) => k.startsWith(p));
+    untrack(() => (esclusi = new Set(salvati)));
+  });
   const confermati = $derived(risolti.filter((t) => !esclusi.has(chiaveTurno(t))));
   const oreConfermate = $derived(Math.round(confermati.reduce((s, t) => s + oreTurno(t), 0) * 100) / 100);
   const conteggi = $derived.by(() => {
@@ -89,8 +103,60 @@
     for (const c of casi) daSalvare[c.chiave] = scelte[c.chiave];
     await dati.setScelte(daSalvare);
     await dati.setUltimaImportazione({ nomeFile: file.nomeFile, bytes: file.bytes, quando: new Date().toISOString() });
+    await dati.setEsclusiMese(mese.year, mese.month, [...esclusi]);
+    if (fonte.stato?.avviso?.mese === mese.nome) fonte.chiudiAvviso();
+    // Le scelte appena fatte (es. un orario doppio) possono sbloccare altri mesi in sospeso
+    if (fonte.stato) fonte.controlla(false, true);
     lavoro = false;
     router.vai(`#/mese/${mese.year}-${String(mese.month).padStart(2, '0')}`);
+  }
+
+  // Foglio Google collegato con il link
+  let link = $state('');
+  let chiave = $state('');
+  let erroreFonte = $state('');
+  let messaggioFonte = $state('');
+  let cambiaLink = $state(false);
+
+  async function collegaFoglio() {
+    erroreFonte = '';
+    messaggioFonte = '';
+    try {
+      const f = await fonte.collega(link);
+      file = f;
+      meseScelto = undefined;
+      scelteLocali = {};
+      link = '';
+      cambiaLink = false;
+    } catch (e) {
+      erroreFonte = e instanceof FoglioNonRaggiungibile ? e.message : 'Non riesco a leggere il foglio: è quello dei turni?';
+    }
+  }
+
+  async function aggiornaTurni() {
+    erroreFonte = '';
+    messaggioFonte = '';
+    const piano = await fonte.controlla(true);
+    if (!piano) {
+      erroreFonte = fonte.stato?.ultimoEsito ?? 'Non sono riuscito a controllare il foglio.';
+      return;
+    }
+    const u = dati.ultimaImportazione;
+    if (u) file = { nomeFile: u.nomeFile, bytes: u.bytes };
+    const daRivedere = piano.find((m) => m.azione === 'rivedi');
+    // l'esito si legge qui sotto: l'avviso in Oggi e Mese servirebbe solo a ripeterlo
+    messaggioFonte = fonte.stato?.avviso?.testo ?? '';
+    if (fonte.stato?.avviso?.tipo !== 'rivedi') fonte.chiudiAvviso();
+    meseScelto = daRivedere?.nome ?? meseScelto;
+    scelteLocali = {};
+  }
+
+  function quando(iso?: string) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    const oggiStr = new Date().toDateString();
+    const ora = d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+    return d.toDateString() === oggiStr ? `oggi alle ${ora}` : `${d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })} alle ${ora}`;
   }
 
   const GG = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
@@ -104,7 +170,58 @@
     <h1 class="page-title">{mese ? 'Verifica i turni' : 'Carica il foglio turni'}</h1>
   </div>
 
-  <div class="card file">
+  {#if fonte.stato && !cambiaLink}
+    <div class="card fonte">
+      <div class="file">
+        <div class="file-ic"><Icona nome="tabella" /></div>
+        <div class="file-txt">
+          <div class="nome">{fonte.stato.nome}</div>
+          <div class="muted small">Foglio Google collegato · controllato {quando(fonte.stato.ultimoControllo)}</div>
+        </div>
+      </div>
+      <button class="btn btn-accent" disabled={fonte.lavoro} onclick={aggiornaTurni}>
+        <Icona nome="scambio" /> {fonte.lavoro ? 'Controllo il foglio…' : 'Aggiorna turni'}
+      </button>
+      <p class="muted small nomargin">
+        L'app lo ricontrolla da sola quando la apri in un mese nuovo o dopo qualche ora: le novità chiare le aggiunge,
+        per orari doppi e turni spariti ti chiede di rivedere. Cerco «{dati.impostazioni.alias.join('», «')}» · <a class="inline" href="#/impostazioni">cambia</a>
+      </p>
+      <div class="row link-azioni">
+        <button class="link small" onclick={() => (cambiaLink = true)}>Cambia link</button>
+        <button class="link small" onclick={() => fonte.scollega()}>Scollega</button>
+      </div>
+    </div>
+    {#if messaggioFonte}<p class="msg ok" role="status">{messaggioFonte}</p>{/if}
+    {#if erroreFonte}<p class="msg err" role="alert">{erroreFonte}</p>{/if}
+  {:else}
+    <div class="card fonte">
+      <div>
+        <div class="nome">Collega il foglio Google</div>
+        <p class="muted small nomargin">Incolla il link del foglio turni condiviso dalla società: dopo, l'app controlla da sola i turni nuovi ogni mese.</p>
+      </div>
+      {#if !fonte.chiave}
+        <label class="field">
+          <span class="lbl">Chiave API Google (configurazione)</span>
+          <input class="inp m" bind:value={chiave} placeholder="AIza…" autocomplete="off" />
+        </label>
+        <button class="btn btn-secondary" disabled={!chiave.trim()} onclick={() => fonte.setChiaveLocale(chiave)}>Salva chiave</button>
+      {:else}
+        <label class="field">
+          <span class="lbl">Link del foglio turni</span>
+          <input class="inp" type="url" bind:value={link} placeholder="https://docs.google.com/spreadsheets/d/…" autocomplete="off" />
+        </label>
+        <div class="row">
+          <button class="btn btn-primary grow" disabled={!link.trim() || fonte.lavoro} onclick={collegaFoglio}>{fonte.lavoro ? 'Leggo il foglio…' : 'Collega'}</button>
+          {#if cambiaLink}<button class="btn btn-secondary" onclick={() => (cambiaLink = false)}>Annulla</button>{/if}
+        </div>
+        {#if !API_KEY_BUILD}<button class="link small" onclick={() => fonte.setChiaveLocale('')}>Cambia chiave API</button>{/if}
+      {/if}
+      {#if erroreFonte}<p class="msg err" role="alert">{erroreFonte}</p>{/if}
+    </div>
+
+    <div class="oppure muted small"><span>oppure carica il file</span></div>
+
+  <div class="card file solo">
     <div class="file-ic"><Icona nome="tabella" /></div>
     <div class="file-txt">
       {#if file}
@@ -120,6 +237,8 @@
       <input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onchange={scegliFile} />
     </label>
   </div>
+
+  {/if}
 
   {#if errore}<p class="msg err" role="alert">{errore}</p>{/if}
 
@@ -225,7 +344,13 @@
 </section>
 
 <style>
-  .file { display: flex; align-items: center; gap: 12px; padding: 12px 14px; }
+  .file { display: flex; align-items: center; gap: 12px; }
+  .file.solo { padding: 12px 14px; }
+  .fonte { padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+  .fonte .nome { white-space: normal; }
+  .link-azioni { gap: 20px; margin: -8px 0 -10px; }
+  .oppure { display: flex; align-items: center; gap: 10px; margin: -4px 0; }
+  .oppure::before, .oppure::after { content: ''; flex: 1; height: 1px; background: var(--line); }
   .file-ic { width: 40px; height: 40px; border-radius: 10px; background: var(--cloro-soft); color: var(--cloro); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .file-txt { flex-grow: 1; min-width: 0; }
   .nome { font-size: var(--text-md); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

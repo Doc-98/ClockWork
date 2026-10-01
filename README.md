@@ -3,6 +3,14 @@
 PWA per organizzare i turni di lavoro e compilare il foglio ore mensile.
 Funziona offline e si installa su iPhone e Android dal browser, senza store.
 
+## Versione 0.7
+
+- **Foglio turni collegato**: in Importa incolli una volta il link del foglio Google (condiviso con
+  «chiunque abbia il link»). L'app lo ricontrolla da sola all'avvio in un mese nuovo o dopo qualche ora:
+  turni nuovi e orari cambiati li applica e lo dice con un avviso; orari doppi mai scelti e turni spariti
+  dal foglio li fa rivedere. Tasto «Aggiorna turni» per controllare subito. Il file caricato a mano resta.
+- I turni tolti in importazione restano tolti anche negli aggiornamenti successivi.
+
 ## Versione 0.6
 
 - **Personalizza** (Impostazioni → Personalizza): nomi delle aree nell'app, titolo degli eventi
@@ -79,6 +87,18 @@ Source: **GitHub Actions**.
    `https://doc-98.github.io/ClockWork/oauth.html`.
 4. Nel repository: Settings → Secrets and variables → Actions → **Variables** → `GOOGLE_CLIENT_ID`.
    (In alternativa il Client ID si può inserire nelle impostazioni dell'app.)
+
+## Foglio turni da Google Sheets: configurazione
+
+1. Nello stesso progetto di [console.cloud.google.com](https://console.cloud.google.com): abilita **Google Drive API**.
+2. APIs & Services → Credentials → **Create credentials → API key**. Poi modificala:
+   - Application restrictions: **Websites**, aggiungi `https://doc-98.github.io/*`;
+   - API restrictions: **Restrict key** → solo **Google Drive API**.
+3. Nel repository: Settings → Secrets and variables → Actions → **Variables** → `GOOGLE_API_KEY`.
+   (In alternativa si può inserire nella schermata Importa dell'app.)
+
+La chiave finisce nel codice pubblicato ed è normale: con quelle restrizioni può solo leggere file già
+condivisi con «chiunque abbia il link», e solo dal sito dell'app. Nessun accesso dell'utente a Google.
 
 ## Privacy
 

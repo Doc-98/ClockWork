@@ -177,3 +177,60 @@ export function turniDelGiornoDalFile(bytes: Uint8Array, iso: string): TurnoLett
   }
   return cache.tutti.filter((t) => t.data === iso && !t.prova);
 }
+
+/** Esito del controllo automatico per un mese del foglio. */
+export interface AggiornamentoMese {
+  nome: string;
+  year: number;
+  month: number;
+  /** 'applica': novità senza ambiguità; 'rivedi': serve la tua conferma; 'nessuna': niente di nuovo */
+  azione: 'nessuna' | 'applica' | 'rivedi';
+  nuovi: number;
+  cambiati: number;
+  rimossi: number;
+  /** Perché serve rivedere */
+  motivo?: string;
+  /** Turni da importare (con gli orari doppi già risolti e senza quelli che avevi escluso) */
+  confermati: TurnoLetto[];
+}
+
+/**
+ * Cosa fare con il foglio appena scaricato, mese per mese (dal mese scorso in avanti).
+ * Si applica da solo ciò che non è ambiguo: turni nuovi o con orario cambiato.
+ * Serve conferma per gli orari doppi mai scelti e per i turni spariti dal foglio.
+ */
+export function pianoAggiornamento(
+  letto: FoglioTurniLetto,
+  turni: Turno[],
+  scelte: ScelteOrari,
+  esclusi: string[],
+  oggi = new Date(),
+): AggiornamentoMese[] {
+  const primo = new Date(oggi.getFullYear(), oggi.getMonth() - 1, 1);
+  const daChiave = primo.getFullYear() * 12 + primo.getMonth();
+  const via = new Set(esclusi);
+  const out: AggiornamentoMese[] = [];
+  for (const m of letto.mesi) {
+    if (m.year * 12 + (m.month - 1) < daChiave) continue;
+    const giaImportato = turni.some((t) => t.origine === 'import' && inMese(t.data, m.year, m.month));
+    if (!m.miei.length && !giaImportato) continue;
+    const casi = casiDoppi(m.miei, scelte);
+    const daScegliere = casi.filter((c) => !scelte[c.chiave]);
+    const confermati = applicaScelte(m.miei, scelte).filter((t) => !via.has(chiaveTurno(t)));
+    const c = confronta(turni, confermati, m.year, m.month);
+    const nuovi = c.righe.filter((r) => r.stato === 'nuovo').length;
+    const cambiati = c.righe.filter((r) => r.stato === 'cambiato').length;
+    const rimossi = c.rimossi.length;
+    let azione: AggiornamentoMese['azione'] = 'nessuna';
+    let motivo: string | undefined;
+    if (daScegliere.length) {
+      azione = 'rivedi';
+      motivo = daScegliere.length === 1 ? 'un orario doppio da scegliere' : `${daScegliere.length} orari doppi da scegliere`;
+    } else if (rimossi) {
+      azione = 'rivedi';
+      motivo = rimossi === 1 ? 'un turno non è più nel foglio' : `${rimossi} turni non sono più nel foglio`;
+    } else if (nuovi || cambiati) azione = 'applica';
+    out.push({ nome: m.nome, year: m.year, month: m.month, azione, nuovi, cambiati, rimossi, motivo, confermati });
+  }
+  return out;
+}

@@ -6,7 +6,7 @@
 export type Rotta =
   | { nome: 'oggi' }
   | { nome: 'mese'; ym?: string; giorno?: string }
-  | { nome: 'importa' }
+  | { nome: 'importa'; mese?: string }
   | { nome: 'foglio'; ym?: string }
   | { nome: 'turno'; id?: string; data?: string; tipo?: 'sost' }
   | { nome: 'impostazioni' }
@@ -21,7 +21,7 @@ function leggi(): Rotta {
     case 'mese':
       return { nome: 'mese', ym: b, giorno: q.get('g') ?? undefined };
     case 'importa':
-      return { nome: 'importa' };
+      return { nome: 'importa', mese: q.get('mese') ?? undefined };
     case 'foglio':
       return { nome: 'foglio', ym: b };
     case 'turno':

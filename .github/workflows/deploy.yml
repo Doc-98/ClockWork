@@ -31,6 +31,8 @@ jobs:
           BASE_PATH: /${{ github.event.repository.name }}/
           # Client ID OAuth di Google (pubblico, non è un segreto): Settings → Secrets and variables → Actions → Variables
           VITE_GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
+          # Chiave API per leggere il foglio turni condiviso con un link (limitata al dominio e alla Drive API)
+          VITE_GOOGLE_API_KEY: ${{ vars.GOOGLE_API_KEY }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
