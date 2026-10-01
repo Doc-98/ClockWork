@@ -3,7 +3,7 @@
   import { router, type Rotta } from '../lib/router.svelte';
   import { generaFoglioOre, MESI } from '../lib/foglio/genera';
   import { vociDaTurni } from '../lib/foglio/daTurni';
-  import { condividiFile, scaricaFile, fileCondivisibile } from '../lib/foglio/condividi';
+  import { condividiFile, scaricaFile, fileCondivisibile, PDF_MIME } from '../lib/foglio/condividi';
   import { formatOre, formatEuro } from '../lib/ore';
   import Icona from '../components/Icona.svelte';
 
@@ -47,27 +47,72 @@
   const fileOk = $derived(!!pronto && !('errore' in pronto));
   const erroreFile = $derived(pronto && 'errore' in pronto ? pronto.errore : '');
 
+  // PDF: preparato anche lui in anticipo (serve dove il telefono non condivide file Excel, es. Android)
+  interface Pdf { bytes: Uint8Array; nomeFile: string; file?: File }
+  let pdf = $state<Pdf | undefined>();
+  let pdfInCorso = $state(false);
+  let ultimoPdf = 0;
+  $effect(() => {
+    const p = pronto;
+    pdf = undefined;
+    if (!p || 'errore' in p) return;
+    const token = ++ultimoPdf;
+    pdfInCorso = true;
+    import('../lib/foglio/pdf')
+      .then(({ generaPdfFoglio }) => generaPdfFoglio(p.bytes))
+      .then((bytes) => {
+        if (token !== ultimoPdf) return;
+        const nomeFile = p.nomeFile.replace(/\.xlsx$/i, '.pdf');
+        pdf = { bytes, nomeFile, file: fileCondivisibile(bytes, nomeFile, [PDF_MIME]) };
+      })
+      .catch(() => {
+        if (token === ultimoPdf) pdf = undefined;
+      })
+      .finally(() => {
+        if (token === ultimoPdf) pdfInCorso = false;
+      });
+  });
+
+  /** Cosa condivide il pulsante: Excel dove il sistema lo accetta (iPhone/iPad), altrimenti PDF */
+  const formatoCondivisione = $derived.by((): 'xlsx' | 'pdf' | 'attesa' | 'nessuno' => {
+    if (!pronto || 'errore' in pronto) return 'nessuno';
+    if (pronto.file) return 'xlsx';
+    if (pdf?.file) return 'pdf';
+    if (pdfInCorso) return 'attesa';
+    return 'nessuno';
+  });
+
+  let sceltaScarica = $state(false);
+
   async function condividi() {
     messaggio = errore = '';
     if (!dati.modello) return (errore = 'Carica prima il modello del foglio ore nelle impostazioni.');
     const p = pronto;
     if (!p || 'errore' in p) return (errore = p?.errore ?? 'Nessun turno da inserire.');
+    const file = formatoCondivisione === 'xlsx' ? p.file : formatoCondivisione === 'pdf' ? pdf?.file : undefined;
     lavoro = true;
-    const r = await condividiFile(p.file);
+    const r = await condividiFile(file);
     lavoro = false;
-    if (r.esito === 'condiviso') messaggio = 'Foglio ore condiviso.';
+    if (r.esito === 'condiviso') messaggio = formatoCondivisione === 'pdf' ? 'Foglio ore condiviso in PDF.' : 'Foglio ore condiviso.';
     else if (r.esito === 'non-supportato') {
       errore = `Non riesco ad aprire il menu Condividi (${r.motivo}). Usa «Scarica»: poi lo condividi dall'app File o dall'anteprima.`;
     }
   }
 
-  function scarica() {
+  function scarica(formato: 'xlsx' | 'pdf') {
     messaggio = errore = '';
+    sceltaScarica = false;
     if (!dati.modello) return (errore = 'Carica prima il modello del foglio ore nelle impostazioni.');
     const p = pronto;
     if (!p || 'errore' in p) return (errore = p?.errore ?? 'Nessun turno da inserire.');
-    scaricaFile(p.bytes, p.nomeFile);
-    messaggio = `Scaricato: ${p.nomeFile}`;
+    if (formato === 'pdf') {
+      if (!pdf) return (errore = 'Sto ancora preparando il PDF, riprova tra un attimo.');
+      scaricaFile(pdf.bytes, pdf.nomeFile, PDF_MIME);
+      messaggio = `Scaricato: ${pdf.nomeFile}`;
+    } else {
+      scaricaFile(p.bytes, p.nomeFile);
+      messaggio = `Scaricato: ${p.nomeFile}`;
+    }
   }
 
   const giornoSett = (d: number) => GG[new Date(ym.year, ym.month - 1, d).getDay()];
@@ -118,10 +163,23 @@
 
   <div class="azioni">
     <div class="row">
-      <button class="btn btn-accent grow" disabled={lavoro || !fileOk} onclick={condividi}><Icona nome="condividi" /> Condividi foglio ore</button>
-      <button class="btn btn-secondary" disabled={lavoro || !fileOk} onclick={scarica}>Scarica</button>
+      <button class="btn btn-accent grow" disabled={lavoro || !fileOk || formatoCondivisione === 'attesa'} onclick={condividi}>
+        <Icona nome="condividi" /> Condividi foglio ore
+        {#if formatoCondivisione === 'pdf'}<span class="fmt">PDF</span>{/if}
+      </button>
+      <button class="btn btn-secondary" disabled={lavoro || !fileOk} aria-expanded={sceltaScarica} onclick={() => (sceltaScarica = !sceltaScarica)}>Scarica</button>
     </div>
-    <p class="muted small nomargin">Dal tuo modello: ore in colonna Q, note in colonna R, colonne O–P e cella Q45 lasciate vuote.</p>
+    {#if sceltaScarica}
+      <div class="scelta" role="group" aria-label="Formato da scaricare">
+        <button class="btn btn-secondary" onclick={() => scarica('xlsx')}><Icona nome="tabella" /> Excel (.xlsx)</button>
+        <button class="btn btn-secondary" disabled={!pdf} onclick={() => scarica('pdf')}><Icona nome="foglio" /> {pdf ? 'PDF' : 'PDF…'}</button>
+      </div>
+    {/if}
+    <p class="muted small nomargin">
+      {formatoCondivisione === 'pdf'
+        ? 'Questo telefono non permette di condividere file Excel: Condividi invia il PDF. L’Excel lo trovi in «Scarica».'
+        : 'Dal tuo modello: ore in colonna Q, note in colonna R, colonne O–P e cella Q45 lasciate vuote.'}
+    </p>
   </div>
 </section>
 
@@ -147,4 +205,7 @@
   .row { display: flex; gap: 8px; }
   .grow { flex: 1; }
   .nomargin { margin: 0; }
+  .fmt { font-size: 11px; font-weight: 700; letter-spacing: .04em; background: rgba(255, 255, 255, 0.2); border-radius: 6px; padding: 2px 6px; }
+  .scelta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+
 </style>

@@ -3,6 +3,14 @@
 PWA per organizzare i turni di lavoro e compilare il foglio ore mensile.
 Funziona offline e si installa su iPhone e Android dal browser, senza store.
 
+## Versione 0.4
+
+- **PDF del foglio ore**: stesso contenuto del file Excel (intestazione, colonne, colori, totale), generato sul telefono.
+- **Condividi**: invia il file Excel dove il sistema lo permette (iPhone, iPad); altrimenti il PDF
+  (Android: Chrome non permette di condividere file Excel dal web).
+- **Scarica**: scegli tra Excel e PDF.
+- Scorrimento col dito tra le schede principali.
+
 ## Versione 0.3
 
 - **Google Calendar**: l'app crea un calendario suo («ClockWork · Leone XIII») e ci tiene allineati

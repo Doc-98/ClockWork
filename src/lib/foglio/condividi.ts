@@ -10,9 +10,15 @@ export type EsitoCondivisione =
  * Prepara il File da condividere. Alcuni sistemi rifiutano il tipo .xlsx nel menu Condividi:
  * proviamo prima col tipo corretto, poi come file generico (stesso nome, stessa estensione).
  */
-export function fileCondivisibile(bytes: Uint8Array, nomeFile: string): File | undefined {
+export const PDF_MIME = 'application/pdf';
+
+export function fileCondivisibile(
+  bytes: Uint8Array,
+  nomeFile: string,
+  tipi: string[] = [XLSX_MIME, 'application/octet-stream', ''],
+): File | undefined {
   if (typeof navigator === 'undefined' || !navigator.canShare) return undefined;
-  for (const type of [XLSX_MIME, 'application/octet-stream', '']) {
+  for (const type of tipi) {
     const f = new File([bytes as BlobPart], nomeFile, type ? { type } : {});
     try {
       if (navigator.canShare({ files: [f] })) return f;
