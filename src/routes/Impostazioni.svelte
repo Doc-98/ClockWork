@@ -154,11 +154,11 @@
 </section>
 
 <style>
-  .top { min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: -8px; }
+  .top { min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); margin-bottom: calc(var(--space-8) * -1); }
   .versione { font-variant-numeric: tabular-nums; }
-  .box { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+  .box { padding: var(--space-16); display: flex; flex-direction: column; gap: var(--space-14); }
   .personalizza { flex-direction: row; align-items: center; color: var(--ink); text-decoration: none; }
-  .titolo-link { font-weight: 600; margin-top: 4px; }
-  .file { font-weight: 600; margin-top: 4px; word-break: break-word; }
-  p { margin: 4px 0 0; }
+  .titolo-link { font-weight: 600; margin-top: var(--space-4); }
+  .file { font-weight: 600; margin-top: var(--space-4); word-break: break-word; }
+  p { margin: var(--space-4) 0 0; }
 </style>

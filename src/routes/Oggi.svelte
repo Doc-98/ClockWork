@@ -127,30 +127,30 @@
 <style>
   .head { display: flex; justify-content: space-between; align-items: flex-start; }
   .data { font-size: var(--text-md); font-weight: 500; }
-  .hero { display: flex; flex-direction: column; gap: 6px; padding: 20px; border-radius: 22px; background: var(--hero); color: var(--on-ink); text-decoration: none; }
-  .hero-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .hero { display: flex; flex-direction: column; gap: var(--space-6); padding: var(--space-20); border-radius: var(--radius-xl); background: var(--hero); color: var(--on-ink); text-decoration: none; }
+  .hero-top { display: flex; justify-content: space-between; align-items: center; gap: var(--space-8); }
   .tag.live { background: var(--on-ink-veil); color: var(--on-ink); }
   .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--mint); }
   .sub { font-size: var(--text-sm); color: var(--on-ink-muted); }
-  .orario { font-size: var(--text-5xl); font-weight: 600; letter-spacing: -0.02em; margin-top: 6px; }
+  .orario { font-size: var(--text-5xl); font-weight: 600; letter-spacing: -0.02em; margin-top: var(--space-6); }
   .dove { font-size: var(--text-base); color: var(--on-ink-soft); }
-  .hero-foot { font-size: var(--text-sm); color: var(--on-ink-muted); margin-top: 4px; }
-  .bar { height: 6px; border-radius: 3px; background: var(--on-ink-track); overflow: hidden; margin-top: 10px; }
+  .hero-foot { font-size: var(--text-sm); color: var(--on-ink-muted); margin-top: var(--space-4); }
+  .bar { height: 6px; border-radius: 3px; background: var(--on-ink-track); overflow: hidden; margin-top: var(--space-10); }
   .bar div { height: 100%; background: var(--mint); border-radius: 3px; }
   .bar.light { background: var(--line-soft); margin-top: 0; }
   .bar.light div { background: var(--cloro); }
-  .empty { padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+  .empty { padding: var(--space-20); display: flex; flex-direction: column; gap: var(--space-12); }
   .empty p { margin: 0; color: var(--muted); }
-  .cover { border: 1.5px solid var(--cloro); background: var(--surface); color: var(--cloro); text-decoration: none; margin-top: -4px; }
-  .mese { padding: 16px; display: flex; flex-direction: column; gap: 12px; color: var(--ink); text-decoration: none; }
-  .mese-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 8px; }
-  .big { display: flex; align-items: baseline; gap: 6px; margin-top: 4px; }
+  .cover { border: 1.5px solid var(--cloro); background: var(--surface); color: var(--cloro); text-decoration: none; margin-top: calc(var(--space-4) * -1); }
+  .mese { padding: var(--space-16); display: flex; flex-direction: column; gap: var(--space-12); color: var(--ink); text-decoration: none; }
+  .mese-top { display: flex; justify-content: space-between; align-items: flex-end; gap: var(--space-8); }
+  .big { display: flex; align-items: baseline; gap: var(--space-6); margin-top: var(--space-4); }
   .big .d { font-size: var(--text-4xl); font-weight: 800; }
   .right { text-align: right; }
-  .euro { font-size: var(--text-2xl); font-weight: 600; margin-top: 6px; }
+  .euro { font-size: var(--text-2xl); font-weight: 600; margin-top: var(--space-6); }
   .mese-foot { display: flex; justify-content: space-between; align-items: center; }
   .mese-foot .link { min-height: 0; }
-  .lista { display: flex; flex-direction: column; gap: 8px; }
+  .lista { display: flex; flex-direction: column; gap: var(--space-8); }
   .lista-head { display: flex; justify-content: space-between; align-items: center; }
   .lista-head h2 { margin: 0; }
 </style>

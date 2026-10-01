@@ -104,16 +104,16 @@
   main {
     max-width: 480px;
     margin: 0 auto;
-    padding: calc(env(safe-area-inset-top, 0px) + 20px) 20px calc(var(--safe-bottom) + 32px);
+    padding: calc(env(safe-area-inset-top, 0px) + var(--space-20)) var(--space-20) calc(var(--safe-bottom) + 32px);
   }
   main.con-nav { padding-bottom: calc(var(--safe-bottom) + 96px); }
   .center { text-align: center; margin-top: 40vh; }
   .banner {
     position: sticky; top: 0; z-index: 30;
-    display: flex; align-items: center; justify-content: space-between; gap: 12px;
-    padding: calc(env(safe-area-inset-top, 0px) + 10px) 20px 10px;
+    display: flex; align-items: center; justify-content: space-between; gap: var(--space-12);
+    padding: calc(env(safe-area-inset-top, 0px) + var(--space-10)) var(--space-20) var(--space-10);
     background: var(--cloro-soft); color: var(--cloro-ink); font-size: var(--text-md);
   }
-  .small-btn { height: 36px; padding: 0 14px; font-size: var(--text-md); }
-  .top-msg { max-width: 440px; margin: 12px auto 0; }
+  .small-btn { height: 36px; padding: 0 var(--space-14); font-size: var(--text-md); }
+  .top-msg { max-width: 440px; margin: var(--space-12) auto 0; }
 </style>

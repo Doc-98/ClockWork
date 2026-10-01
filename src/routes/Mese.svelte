@@ -133,14 +133,14 @@
 </section>
 
 <style>
-  .head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-8); }
   .titolo { text-align: center; min-width: 0; }
   h1 { margin: 0; font-size: var(--text-3xl); font-weight: 800; }
-  .cal { padding: 12px; }
-  .grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
-  .wd { padding-bottom: 6px; text-align: center; }
+  .cal { padding: var(--space-12); }
+  .grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: var(--space-2); }
+  .wd { padding-bottom: var(--space-6); text-align: center; }
   .wd .lbl { font-size: var(--text-2xs); }
-  .cella { height: 50px; border: none; background: none; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; color: var(--ink); padding: 0; }
+  .cella { height: 50px; border: none; background: none; border-radius: var(--radius-md); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-4); cursor: pointer; color: var(--ink); padding: 0; }
   .cella.oggi .num { color: var(--cloro); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
   .cella.sel { background: var(--fill); color: var(--on-fill); }
   .cella.sel .num { color: var(--on-fill); }
@@ -152,15 +152,15 @@
      (ΔE 16, 3 con protanopia): la forma li distingue anche senza colore. */
   .punto.quadro { border-radius: 2px; }
   .sel .punto { outline: 1.5px solid var(--on-fill); }
-  .legenda { display: flex; flex-wrap: wrap; gap: 6px 12px; padding: 10px 4px 2px; font-size: var(--text-xs); color: var(--muted); }
-  .legenda span { display: inline-flex; align-items: center; gap: 6px; }
+  .legenda { display: flex; flex-wrap: wrap; gap: var(--space-6) var(--space-12); padding: var(--space-10) var(--space-4) var(--space-2); font-size: var(--text-xs); color: var(--muted); }
+  .legenda span { display: inline-flex; align-items: center; gap: var(--space-6); }
   .legenda i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); display: inline-block; }
   .legenda i.quadro { border-radius: 2px; }
   .legenda i.ring { background: transparent; border: 2px solid var(--c); width: 9px; height: 9px; box-sizing: border-box; }
-  .giorno-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: -6px; }
+  .giorno-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: calc(var(--space-6) * -1); }
   h2 { margin: 0; font-size: var(--text-xl); }
   .nessuno { margin: 0; }
   .aggiungi { border: 1.5px dashed var(--line-dashed); background: transparent; color: var(--ink); text-decoration: none; }
-  .ultimo { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .ultimo { display: flex; justify-content: space-between; align-items: center; gap: var(--space-12); }
   .ultimo .link { white-space: nowrap; }
 </style>
