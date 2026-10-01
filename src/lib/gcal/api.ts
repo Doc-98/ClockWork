@@ -35,13 +35,20 @@ export async function creaCalendario(token: string, nome: string): Promise<strin
   return c.id;
 }
 
-/** Controlla che il calendario esista ancora (l'utente potrebbe averlo eliminato). */
+/**
+ * Controlla che il calendario esista ancora (l'utente potrebbe averlo eliminato).
+ * Solo 404/410 vogliono dire «non c'è più». Un 403 (limite di richieste, account diverso, permesso
+ * negato) NON lo è: trattarlo come sparito faceva creare un secondo calendario con gli eventi doppi.
+ */
 export async function esisteCalendario(token: string, id: string): Promise<boolean> {
   try {
     await chiama(token, 'GET', `/calendars/${encodeURIComponent(id)}`);
     return true;
   } catch (e) {
-    if (e instanceof ErroreGoogle && (e.status === 404 || e.status === 403 || e.status === 410)) return false;
+    if (e instanceof ErroreGoogle && (e.status === 404 || e.status === 410)) return false;
+    if (e instanceof ErroreGoogle && e.status === 403) {
+      throw new ErroreGoogle(403, 'Google non permette di aprire il calendario di ClockWork (accesso con un altro account, o troppe richieste). Riprova tra poco: non ne creo uno nuovo.');
+    }
     throw e;
   }
 }

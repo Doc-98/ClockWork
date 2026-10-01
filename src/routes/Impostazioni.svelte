@@ -7,6 +7,7 @@
   import { completaImpostazioni, ordinaTurni, type Turno } from '../lib/model';
   import Icona from '../components/Icona.svelte';
   import CardCalendario from '../components/CardCalendario.svelte';
+  import { gcal } from '../lib/gcal/stato.svelte';
   import { tema, type SceltaTema } from '../lib/tema.svelte';
 
   const TEMI: { id: SceltaTema; label: string }[] = [
@@ -56,6 +57,8 @@
       turni: $state.snapshot(dati.turni),
       impostazioni: $state.snapshot(dati.impostazioni),
       scelteOrari: $state.snapshot(dati.scelte),
+      // così dopo un ripristino l'app ritrova lo stesso calendario invece di crearne un altro
+      googleCalendarId: gcal.stato.calendarId ?? gcal.stato.calendarioPrecedente,
     };
     const bytes = new TextEncoder().encode(JSON.stringify(backup, null, 1));
     const oggi = new Date().toISOString().slice(0, 10);
@@ -75,6 +78,7 @@
       await dati.setTurni(turni.sort(ordinaTurni));
       if (b.impostazioni) await dati.setImpostazioni(completaImpostazioni({ ...dati.impostazioni, ...b.impostazioni }));
       if (b.scelteOrari) await dati.setScelte(b.scelteOrari);
+      if (typeof b.googleCalendarId === 'string' && b.googleCalendarId) await gcal.adotta(b.googleCalendarId);
       nome = dati.impostazioni.alias.join(', ');
       errore = '';
       messaggio = `Ripristinati ${turni.length} turni.`;

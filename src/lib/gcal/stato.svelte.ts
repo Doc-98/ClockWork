@@ -20,6 +20,8 @@ export interface StatoGcal {
   /** C'è una modifica non ancora mandata al calendario */
   daSincronizzare?: boolean;
   ultimoEsito?: string;
+  /** Calendario lasciato su Google dopo «Scollega e tieni»: ricollegando si riusa questo */
+  calendarioPrecedente?: string;
 }
 
 export const CLIENT_ID_BUILD: string = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? '';
@@ -73,11 +75,16 @@ class Gcal {
     this.lavoro = true;
     try {
       const t = this.tokenValido ? this.token! : await this.accedi();
-      let calId = this.stato.calendarId;
-      if (!calId || !(await api.esisteCalendario(t.accessToken, calId))) {
-        calId = await api.creaCalendario(t.accessToken, NOME_CALENDARIO);
-      }
-      await this.salvaStato({ ...this.stato, calendarId: calId });
+      // Un solo collegamento alla volta anche tra app installata e scheda del browser aperte insieme:
+      // senza, entrambe potevano non trovare il calendario e crearne uno ciascuna.
+      await esclusivo(async () => {
+        await this.carica(); // l'altra istanza potrebbe averlo appena creato
+        let calId = this.stato.calendarId ?? this.stato.calendarioPrecedente;
+        if (!calId || !(await api.esisteCalendario(t.accessToken, calId))) {
+          calId = await api.creaCalendario(t.accessToken, NOME_CALENDARIO);
+        }
+        await this.salvaStato({ ...this.stato, calendarId: calId, calendarioPrecedente: undefined });
+      });
       await this.sincronizza();
     } catch (e) {
       this.errore = messaggio(e);
@@ -116,7 +123,17 @@ class Gcal {
     }
   }
 
-  private async sincronizza(): Promise<PianoSync> {
+  /** Ricollega a un calendario già esistente (es. dall'id salvato in un backup), senza crearne uno. */
+  async adotta(calendarId: string) {
+    if (this.collegato) return; // già collegato: non cambio calendario sotto i piedi
+    await this.salvaStato({ ...this.stato, calendarioPrecedente: calendarId });
+  }
+
+  private sincronizza(): Promise<PianoSync> {
+    return esclusivo(() => this.sincronizzaOra());
+  }
+
+  private async sincronizzaOra(): Promise<PianoSync> {
     const calId = this.stato.calendarId;
     if (!calId || !this.token) throw new Error('Google Calendar non collegato.');
     const token = this.token.accessToken;
@@ -165,10 +182,17 @@ class Gcal {
       }
       this.lavoro = false;
     }
+    const tenuto = eliminaCalendario ? undefined : this.stato.calendarId ?? this.stato.calendarioPrecedente;
     this.token = undefined;
     await del(K_TOKEN);
-    await this.salvaStato({});
+    await this.salvaStato(tenuto ? { calendarioPrecedente: tenuto } : {});
   }
+}
+
+/** Esegue fn con un lucchetto condiviso tra tutte le finestre dell'app (Web Locks), se disponibile. */
+function esclusivo<T>(fn: () => Promise<T>): Promise<T> {
+  if (typeof navigator !== 'undefined' && navigator.locks) return navigator.locks.request('clockwork-gcal', fn);
+  return fn();
 }
 
 async function inParallelo(lavori: (() => Promise<unknown>)[], n: number) {
