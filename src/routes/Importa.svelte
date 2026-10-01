@@ -232,7 +232,7 @@
   .inline { color: var(--cloro); font-weight: 600; }
   .scegli { position: relative; overflow: hidden; height: 40px; padding: 0 14px; font-size: 14px; }
   .scegli input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-  .chips { display: flex; gap: 8px; overflow-x: auto; margin: 0 -20px; padding: 2px 20px; scrollbar-width: none; }
+  .chips { display: flex; gap: 8px; overflow-x: auto; margin: 0 -20px; padding: 4px 20px; scrollbar-width: none; }
   .chip { height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: #fff; color: var(--ink); font-size: 13px; font-weight: 600; white-space: nowrap; cursor: pointer; flex-shrink: 0; }
   .chip.vuoto { border-style: dashed; color: var(--muted); background: transparent; font-weight: 500; }
   .chip[aria-pressed='true'] { background: var(--ink); border-color: var(--ink); color: #fff; }

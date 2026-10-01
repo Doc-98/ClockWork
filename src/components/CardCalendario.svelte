@@ -38,7 +38,7 @@
   {#if !gcal.clientId}
     <label class="field">
       <span class="lbl">Client ID Google (configurazione)</span>
-      <input class="inp m small-inp" bind:value={clientId} placeholder="…apps.googleusercontent.com" />
+      <input class="inp m" bind:value={clientId} placeholder="…apps.googleusercontent.com" />
     </label>
     <p class="muted small">URI di reindirizzamento da autorizzare: <span class="m">{redirectUri()}</span></p>
     <button class="btn btn-secondary" disabled={!clientId.trim()} onclick={() => gcal.setClientIdLocale(clientId)}>Salva Client ID</button>
@@ -81,6 +81,5 @@
   .scollega { display: flex; flex-direction: column; gap: 8px; }
   .danger { background: transparent; color: var(--danger); border: 1px solid #e8c4c0; }
   .sep { height: 1px; background: var(--line-soft); margin: 4px 0; }
-  .small-inp { font-size: 13px; }
   .m { word-break: break-all; }
 </style>

@@ -146,7 +146,7 @@
   <div class="card tab">
     <div class="tr th"><span>Gg</span><span></span><span>Nota (col. R)</span><span class="r">Ore</span></div>
     {#each voci as v (v.day)}
-      <a class="tr" href={`#/mese/${isoGiorno(v.day).slice(0, 7)}?g=${isoGiorno(v.day)}`}>
+      <a class="tr focus-inset" href={`#/mese/${isoGiorno(v.day).slice(0, 7)}?g=${isoGiorno(v.day)}`}>
         <span class="m b">{v.day}</span>
         <span class="muted">{giornoSett(v.day)}</span>
         <span class="nota">{v.note ?? '—'}</span>
@@ -155,7 +155,7 @@
     {:else}
       <p class="muted small vuoto">Nessun turno in {MESI[ym.month - 1].toLowerCase()}. <a href="#/importa">Importa il foglio turni</a> o aggiungi i turni dal calendario.</p>
     {/each}
-    <a class="tr add" href={`#/turno/nuovo?tipo=sost&data=${isoGiorno(giornoPerNuovo)}`}><Icona nome="piu" /> Aggiungi sostituzione</a>
+    <a class="tr add focus-inset" href={`#/turno/nuovo?tipo=sost&data=${isoGiorno(giornoPerNuovo)}`}><Icona nome="piu" /> Aggiungi sostituzione</a>
   </div>
 
   {#if errore || erroreFile}<p class="msg err" role="alert">{errore || erroreFile}</p>{/if}
