@@ -188,7 +188,7 @@
   h1 { margin: 0; font-size: var(--text-3xl); font-weight: 800; }
   .kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .kpi { padding: 12px 14px; border-radius: var(--radius); }
-  .kpi.dark { background: var(--ink); color: var(--on-ink); }
+  .kpi.dark { background: var(--hero); color: var(--on-ink); }
   .big { display: flex; align-items: baseline; gap: 4px; margin-top: 2px; }
   .big .d { font-size: var(--text-4xl); font-weight: 800; }
   .euro { font-size: var(--text-2xl); font-weight: 600; margin-top: 6px; }

@@ -81,7 +81,7 @@
 
 <style>
   .step { display: flex; gap: 14px; padding: 16px; }
-  .n { width: 28px; height: 28px; border-radius: 50%; background: var(--ink); color: var(--on-ink); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: var(--text-md); flex-shrink: 0; }
+  .n { width: 28px; height: 28px; border-radius: 50%; background: var(--fill); color: var(--on-fill); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: var(--text-md); flex-shrink: 0; }
   .done .n { background: var(--ok); }
   .body { display: flex; flex-direction: column; gap: 10px; flex-grow: 1; min-width: 0; }
   h2 { margin: 2px 0 0; font-size: var(--text-lg); }

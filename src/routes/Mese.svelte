@@ -142,8 +142,8 @@
   .wd .lbl { font-size: var(--text-2xs); }
   .cella { height: 50px; border: none; background: none; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; color: var(--ink); padding: 0; }
   .cella.oggi .num { color: var(--cloro); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
-  .cella.sel { background: var(--ink); color: var(--on-ink); }
-  .cella.sel .num { color: var(--on-ink); }
+  .cella.sel { background: var(--fill); color: var(--on-fill); }
+  .cella.sel .num { color: var(--on-fill); }
   .num { font-size: var(--text-base); font-weight: 500; }
   .punti { display: flex; gap: 3px; height: 8px; align-items: center; }
   .punto { width: 7px; height: 7px; border-radius: 50%; background: var(--c); }
@@ -151,7 +151,7 @@
   /* Atrio: quadratino invece del pallino. Il suo viola e il blu del maschile si confondono
      (ΔE 16, 3 con protanopia): la forma li distingue anche senza colore. */
   .punto.quadro { border-radius: 2px; }
-  .sel .punto { outline: 1.5px solid var(--on-ink); }
+  .sel .punto { outline: 1.5px solid var(--on-fill); }
   .legenda { display: flex; flex-wrap: wrap; gap: 6px 12px; padding: 10px 4px 2px; font-size: var(--text-xs); color: var(--muted); }
   .legenda span { display: inline-flex; align-items: center; gap: 6px; }
   .legenda i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); display: inline-block; }

@@ -24,7 +24,13 @@
   --ok: #2f7d4f;
   --danger: #b42318;
   --danger-line: #e8c4c0;
-  /* Testo e segni su ink (e su cloro) */
+  /* Ruoli dei riempimenti forti. In chiaro coincidono con ink e bianco; nel tema scuro si separano. */
+  --fill: #10212b;     /* pulsante primario, chip e giorno selezionati, numeri dei passi */
+  --on-fill: #ffffff;
+  --hero: #10212b;     /* card del turno principale e KPI del compenso: scuri in entrambi i temi */
+  --on-cloro: #ffffff; /* testo su btn-accent, pallino dell'interruttore acceso */
+  --knob: #ffffff;     /* pallino dell'interruttore spento */
+  /* Testo e segni sulle superfici hero */
   --on-ink: #ffffff;
   --on-ink-soft: #dce3e7;   /* 12,7:1 su ink */
   --on-ink-muted: #c9d3d9;  /* 10,8:1 */
@@ -54,9 +60,61 @@
   --text-4xl: 32px;  /* la cifra grande delle ore */
   --text-5xl: 40px;  /* orario del turno principale */
   --shadow-seg: 0 1px 2px rgba(16, 33, 43, 0.12);
+  --icona-avviso: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 4 2.5 20h19z'/%3E%3Cpath d='M12 10v4.5M12 17.2v.1'/%3E%3C/svg%3E");
   --radius: 16px;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   color-scheme: light;
+}
+
+
+/* Tema scuro. data-tema lo mette lo script in index.html (e src/lib/tema.svelte.ts quando cambia):
+   «Sistema» diventa chiaro o scuro lì, così qui basta un blocco solo.
+   Contrasti: testo ≥ 7:1 tranne on-ink-faint su hero (5,9:1); bordi, segni e anello di focus ≥ 3:1. */
+:root[data-tema='scuro'] {
+  --carta: #0e1a21;
+  --surface: #16252e;
+  --surface-sunken: #0a1419;
+  --line: #2b3c46;
+  --line-soft: #213139;
+  --line-dashed: #56686f;
+  --line-strong: #71848f;
+  --ink: #e6edf0;
+  --muted: #9eb0ba;
+  --chevron: #7e909a;
+  --switch-off: #62747e;
+  --seg-fg: #b9c6cd;
+  --cloro: #4fbcc6;
+  --cloro-dark: #3fa5af;
+  --cloro-soft: #163a40;
+  --cloro-ink: #bfe7ea;
+  --warn-bg: #3a2a12;
+  --warn: #f2b766;
+  --warn-line: #6e5023;
+  --ok: #4fc283;
+  --danger: #ff8b7b;
+  --danger-line: #6e2f29;
+  --fill: #e6edf0;
+  --on-fill: #10212b;
+  --hero: #1d3945;
+  --on-cloro: #0a1c22;
+  --knob: #f4f6f7;
+  --area-m: #7a9cff;
+  --area-m-bg: #1c2b52;
+  --area-m-fg: #c3d1ff;
+  --area-f: #ef77b6;
+  --area-f-bg: #45182f;
+  --area-f-fg: #ffc6e2;
+  --area-p: #f2913f;
+  --area-p-bg: #43260c;
+  --area-p-fg: #ffcf9f;
+  --area-a: #b39cf5;
+  --area-a-bg: #2c2350;
+  --area-a-fg: #d9ccff;
+  --area-x: #94a3aa;
+  --area-x-bg: #26333a;
+  --area-x-fg: #cdd7dc;
+  --shadow-seg: 0 1px 2px rgba(0, 0, 0, 0.5);
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -82,8 +140,8 @@ a { color: var(--cloro); }
   font-size: var(--text-base); font-weight: 600; cursor: pointer;
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
 }
-.btn-primary { background: var(--ink); color: var(--on-ink); }
-.btn-accent { background: var(--cloro); color: var(--on-ink); }
+.btn-primary { background: var(--fill); color: var(--on-fill); }
+.btn-accent { background: var(--cloro); color: var(--on-cloro); }
 .btn-secondary { background: var(--surface); color: var(--ink); border: 1px solid var(--line-strong); }
 .btn-accent:active:not(:disabled) { background: var(--cloro-dark); }
 /* Distruttivo: solo per eliminare, con conferma nel pulsante stesso */
@@ -123,11 +181,17 @@ label:has(> input[type='file']:focus-visible) { outline: 2px solid var(--cloro);
 .muted { color: var(--muted); }
 .small { font-size: var(--text-sm); }
 .msg { margin: 0; padding: 10px 14px; border-radius: 12px; font-size: var(--text-md); line-height: 1.4; }
-.msg.err { background: var(--warn-bg); color: var(--warn); }
+.msg.err { position: relative; padding-left: 38px; background: var(--warn-bg); color: var(--warn); }
+/* Un errore si riconosce anche senza colore: triangolo d'avviso disegnato nel colore del testo */
+.msg.err::before {
+  content: ''; position: absolute; left: 13px; top: 11px; width: 18px; height: 18px; background: currentColor;
+  -webkit-mask: var(--icona-avviso) center / contain no-repeat; mask: var(--icona-avviso) center / contain no-repeat;
+}
 .msg.ok { background: var(--cloro-soft); color: var(--cloro-ink); }
 .switch { width: 50px; height: 30px; border-radius: 999px; border: none; background: var(--switch-off); padding: 3px; display: flex; cursor: pointer; flex-shrink: 0; }
 .switch[aria-checked='true'] { background: var(--cloro); justify-content: flex-end; }
-.switch span { width: 24px; height: 24px; border-radius: 50%; background: var(--surface); }
+.switch span { width: 24px; height: 24px; border-radius: 50%; background: var(--knob); }
+.switch[aria-checked='true'] span { background: var(--on-cloro); }
 .seg { display: grid; gap: 4px; padding: 4px; background: var(--surface-sunken); border-radius: 14px; }
 .seg button { position: relative; min-height: 40px; border: none; border-radius: 10px; background: transparent; color: var(--seg-fg); font-size: var(--text-sm); font-weight: 600; cursor: pointer; padding: 0 6px; }
 .seg button[aria-pressed='true'] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-seg); }
@@ -143,7 +207,7 @@ label:has(> input[type='file']:focus-visible) { outline: 2px solid var(--cloro);
 .chip { position: relative; height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-size: var(--text-sm); font-weight: 600; white-space: nowrap; cursor: pointer; }
 .chip::after { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 44px; transform: translateY(-50%); }
 .chip.vuoto { border-style: dashed; color: var(--muted); background: transparent; font-weight: 500; }
-.chip[aria-pressed='true'] { background: var(--ink); border-color: var(--ink); color: var(--on-ink); }
+.chip[aria-pressed='true'] { background: var(--fill); border-color: var(--fill); color: var(--on-fill); }
 
 /* Pulsante che apre la scelta di un file: l'input trasparente copre il pulsante */
 .upload { position: relative; overflow: hidden; }

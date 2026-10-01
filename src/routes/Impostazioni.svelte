@@ -7,6 +7,13 @@
   import { ordinaTurni, type Turno } from '../lib/model';
   import Icona from '../components/Icona.svelte';
   import CardCalendario from '../components/CardCalendario.svelte';
+  import { tema, type SceltaTema } from '../lib/tema.svelte';
+
+  const TEMI: { id: SceltaTema; label: string }[] = [
+    { id: 'chiaro', label: 'Chiaro' },
+    { id: 'scuro', label: 'Scuro' },
+    { id: 'sistema', label: 'Sistema' },
+  ];
 
   let nome = $state(dati.impostazioni.alias.join(', '));
   let tariffa = $state(String(dati.impostazioni.tariffa).replace('.', ','));
@@ -99,6 +106,18 @@
     </div>
     <label class="btn btn-secondary upload">Sostituisci il modello
       <input type="file" accept=".xlsx" onchange={cambiaModello} /></label>
+  </div>
+
+  <div class="card box">
+    <div class="field">
+      <span class="lbl" id="lbl-tema">Aspetto</span>
+      <div class="seg" style="grid-template-columns: repeat(3, minmax(0, 1fr))" role="group" aria-labelledby="lbl-tema">
+        {#each TEMI as t (t.id)}
+          <button aria-pressed={tema.scelta === t.id} onclick={() => tema.imposta(t.id)}>{t.label}</button>
+        {/each}
+      </div>
+      <p class="muted small">«Sistema» segue il tema chiaro o scuro scelto nelle impostazioni del telefono. Vale solo su questo telefono.</p>
+    </div>
   </div>
 
   <CardCalendario />

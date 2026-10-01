@@ -26,6 +26,8 @@
     padding-bottom: var(--safe-bottom);
     background: var(--surface); border-top: 1px solid var(--line);
   }
-  a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-height: 60px; font-size: var(--text-2xs); font-weight: 600; color: var(--muted); text-decoration: none; }
+  a { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-height: 60px; font-size: var(--text-2xs); font-weight: 600; color: var(--muted); text-decoration: none; }
   a.on { color: var(--cloro); }
+  /* La voce attiva ha anche una barretta: si riconosce senza distinguere i colori */
+  a.on::before { content: ''; position: absolute; top: 0; left: 50%; width: 28px; height: 3px; margin-left: -14px; border-radius: 0 0 3px 3px; background: var(--cloro); }
 </style>

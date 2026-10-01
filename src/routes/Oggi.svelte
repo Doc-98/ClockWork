@@ -127,7 +127,7 @@
 <style>
   .head { display: flex; justify-content: space-between; align-items: flex-start; }
   .data { font-size: var(--text-md); font-weight: 500; }
-  .hero { display: flex; flex-direction: column; gap: 6px; padding: 20px; border-radius: 22px; background: var(--ink); color: var(--on-ink); text-decoration: none; }
+  .hero { display: flex; flex-direction: column; gap: 6px; padding: 20px; border-radius: 22px; background: var(--hero); color: var(--on-ink); text-decoration: none; }
   .hero-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
   .tag.live { background: var(--on-ink-veil); color: var(--on-ink); }
   .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--mint); }
