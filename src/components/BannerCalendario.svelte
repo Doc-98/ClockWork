@@ -9,7 +9,7 @@
   <div class="banner" role="status">
     <Icona nome="mese" />
     <span>{gcal.errore || 'Google Calendar da aggiornare.'}</span>
-    <button class="btn btn-accent" onclick={() => gcal.sincronizzaDaTocco()}>Sincronizza</button>
+    <button class="btn btn-accent tap44" onclick={() => gcal.sincronizzaDaTocco()}>Sincronizza</button>
   </div>
 {:else if gcal.lavoro}
   <div class="banner" role="status"><Icona nome="mese" /><span>Aggiorno Google Calendar…</span></div>

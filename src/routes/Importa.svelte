@@ -126,7 +126,7 @@
   {#if letto && mesiConDati.length}
     <div class="chips" role="group" aria-label="Mese">
       {#each mesiConDati as m (m.nome)}
-        <button class="chip" class:vuoto={!m.miei.length} aria-pressed={m.nome === mese?.nome} onclick={() => scegliMese(m.nome)}>
+        <button class="chip tap44" class:vuoto={!m.miei.length} aria-pressed={m.nome === mese?.nome} onclick={() => scegliMese(m.nome)}>
           {breveMese(m.nome)}{m.miei.length ? '' : ' · —'}
         </button>
       {/each}
@@ -230,7 +230,7 @@
   .file-txt { flex-grow: 1; min-width: 0; }
   .nome { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .inline { color: var(--cloro); font-weight: 600; }
-  .scegli { position: relative; overflow: hidden; height: 40px; padding: 0 14px; font-size: 14px; }
+  .scegli { position: relative; overflow: hidden; height: 44px; padding: 0 14px; font-size: 14px; }
   .scegli input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
   .chips { display: flex; gap: 8px; overflow-x: auto; margin: 0 -20px; padding: 4px 20px; scrollbar-width: none; }
   .chip { height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: #fff; color: var(--ink); font-size: 13px; font-weight: 600; white-space: nowrap; cursor: pointer; flex-shrink: 0; }

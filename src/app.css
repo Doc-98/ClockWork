@@ -97,6 +97,11 @@ label:has(> input[type='file']:focus-visible) { outline: 2px solid var(--cloro);
 .switch[aria-checked='true'] { background: var(--cloro); justify-content: flex-end; }
 .switch span { width: 24px; height: 24px; border-radius: 50%; background: #fff; }
 .seg { display: grid; gap: 4px; padding: 4px; background: #e9e4da; border-radius: 14px; }
-.seg button { min-height: 40px; border: none; border-radius: 10px; background: transparent; color: #33454f; font-size: 13px; font-weight: 600; cursor: pointer; padding: 0 6px; }
+.seg button { position: relative; min-height: 40px; border: none; border-radius: 10px; background: transparent; color: #33454f; font-size: 13px; font-weight: 600; cursor: pointer; padding: 0 6px; }
 .seg button[aria-pressed='true'] { background: #fff; color: var(--ink); box-shadow: 0 1px 2px rgba(16, 33, 43, 0.12); }
 .field { display: flex; flex-direction: column; gap: 6px; }
+
+/* Area di tocco da 44px (Apple HIG, WCAG 2.5.5) per i controlli che a vista restano più bassi:
+   chip, pulsanti nei banner, segmenti. L'area è invisibile e centrata sul controllo. */
+.tap44 { position: relative; }
+.tap44::after, .seg button::after { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 44px; transform: translateY(-50%); }

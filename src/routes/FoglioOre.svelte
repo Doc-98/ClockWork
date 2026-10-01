@@ -194,7 +194,7 @@
   .euro { font-size: 22px; font-weight: 600; margin-top: 6px; }
   .light { color: #aab7be; }
   .tab { overflow: hidden; }
-  .tr { display: grid; grid-template-columns: 30px 36px 1fr 52px; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px; border-top: 1px solid var(--line-soft); font-size: 14px; color: var(--ink); text-decoration: none; }
+  .tr { display: grid; grid-template-columns: 30px 36px 1fr 52px; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; border-top: 1px solid var(--line-soft); font-size: 14px; color: var(--ink); text-decoration: none; }
   .th { border-top: none; min-height: 32px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
   .b { font-weight: 600; }
   .r { text-align: right; }

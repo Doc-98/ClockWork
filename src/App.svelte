@@ -62,7 +62,7 @@
 {#if aggiornamento}
   <div class="banner" role="status">
     <span>È disponibile una nuova versione.</span>
-    <button class="btn btn-accent small-btn" onclick={() => aggiornamento?.()}>Aggiorna</button>
+    <button class="btn btn-accent small-btn tap44" onclick={() => aggiornamento?.()}>Aggiorna</button>
   </div>
 {/if}
 

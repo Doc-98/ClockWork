@@ -121,10 +121,10 @@
   </label>
 
   {#if nuovo || esistente?.origine === 'manuale'}
-    <div class="riga-switch">
+    <label class="riga-switch">
       <span>È una sostituzione</span>
       <button class="switch" role="switch" aria-checked={sost} aria-label="È una sostituzione" onclick={() => (sost = !sost)}><span></span></button>
-    </div>
+    </label>
   {/if}
 
   {#if sost}
@@ -134,7 +134,7 @@
       {#if nomiColleghi.length}
         <div class="chips">
           {#each nomiColleghi as n (n)}
-            <button class="chip" aria-pressed={normalizzaNome(n) === normalizzaNome(sostituisce)} onclick={() => scegliCollega(n)}>{n}</button>
+            <button class="chip tap44" aria-pressed={normalizzaNome(n) === normalizzaNome(sostituisce)} onclick={() => scegliCollega(n)}>{n}</button>
           {/each}
         </div>
       {/if}
@@ -168,10 +168,10 @@
   </label>
 
   {#if esistente}
-    <div class="riga-switch">
+    <label class="riga-switch">
       <span>Annullato (non conta nelle ore)</span>
       <button class="switch" role="switch" aria-checked={annullato} aria-label="Annullato" onclick={() => (annullato = !annullato)}><span></span></button>
-    </div>
+    </label>
   {/if}
 
   {#if errore}<p class="msg err" role="alert">{errore}</p>{/if}
@@ -188,8 +188,8 @@
   .bar { display: grid; grid-template-columns: 80px 1fr 80px; align-items: center; min-height: 44px; }
   h1 { margin: 0; text-align: center; font-size: 16px; font-weight: 700; }
   .nomargin { margin: 0; }
-  .riga-switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; font-size: 15px; font-weight: 500; }
-  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .riga-switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; font-size: 15px; font-weight: 500; cursor: pointer; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; } /* 36px + 8px: le aree da 44px delle righe si toccano senza sovrapporsi */
   .chip { min-height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: #fff; font-size: 13px; font-weight: 500; cursor: pointer; }
   .chip[aria-pressed='true'] { background: var(--ink); border-color: var(--ink); color: #fff; }
   .hint { display: flex; gap: 8px; align-items: flex-start; background: var(--cloro-soft); color: #1d3a40; border-radius: 12px; padding: 10px 12px; font-size: 13px; line-height: 1.4; }
