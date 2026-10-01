@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { dati } from '../lib/dati.svelte';
   import { breveArea, dataDa, hhmm, oreDi, type Turno } from '../lib/model';
   import { formatOre } from '../lib/ore';
   import Icona from './Icona.svelte';
@@ -7,7 +8,7 @@
   const GG = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
   const d = $derived(dataDa(turno.data));
   const etichetta = $derived(
-    turno.sostituisce ? `Sost. ${turno.sostituisce}` : `${breveArea(turno.area)}${turno.postazione ? ' · P' + turno.postazione : ''}${turno.presa ? ' · presa' : ''}`,
+    turno.nome?.trim() || (turno.sostituisce ? `Sost. ${turno.sostituisce}` : `${breveArea(turno.area, dati.impostazioni)}${turno.postazione ? ' · P' + turno.postazione : ''}${turno.presa ? ' · presa' : ''}`),
   );
 </script>
 

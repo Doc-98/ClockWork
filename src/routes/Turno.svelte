@@ -2,11 +2,14 @@
   import { untrack } from 'svelte';
   import { dati } from '../lib/dati.svelte';
   import { router, type Rotta } from '../lib/router.svelte';
-  import { AREE, daHHMM, hhmm, isoDa, notaSostituzione, nuovoId, nomeArea, oreDi, type Area, type Turno } from '../lib/model';
+  import { AREE, daHHMM, type Promemoria, hhmm, isoDa, notaSostituzione, nuovoId, nomeArea, breveArea, oreDi, type Area, type Turno } from '../lib/model';
   import { turniDelGiornoDalFile } from '../lib/turni/importa';
   import { normalizzaNome } from '../lib/turni/parse';
   import { formatOre, oreInParole } from '../lib/ore';
   import Icona from '../components/Icona.svelte';
+  import EditorPromemoria from '../components/EditorPromemoria.svelte';
+  import { titoloTurno, promemoriaDi, testoPromemoria } from '../lib/gcal/eventi';
+  import { gcal } from '../lib/gcal/stato.svelte';
 
   let { rotta }: { rotta: Extract<Rotta, { nome: 'turno' }> } = $props();
   // La schermata viene ricreata a ogni cambio di rotta (vedi {#key} in App): qui basta il valore iniziale.
@@ -25,6 +28,9 @@
   let nota = $state(esistente?.nota ?? '');
   let notaToccata = $state(!!esistente?.nota);
   let annullato = $state(!!esistente?.annullato);
+  let nomeTurno = $state(esistente?.nome ?? '');
+  let promemoriaPropri = $state(!!esistente?.promemoria);
+  let promemoria = $state<Promemoria[]>(esistente?.promemoria ? [...esistente.promemoria] : []);
   let errore = $state('');
   let confermaElimina = $state(false);
   let suggerimento = $state('');
@@ -50,7 +56,7 @@
       postazione = t.postazione;
       inizio = hhmm(t.inizio).padStart(5, '0');
       fine = hhmm(t.fine).padStart(5, '0');
-      suggerimento = `Nel foglio turni ${t.nome} è in ${nomeArea(t.area).toLowerCase()}${t.postazione ? `, postazione ${t.postazione}` : ''}, ${hhmm(t.inizio)}–${hhmm(t.fine)}${t.orarioDoppio ? ' (orario doppio: controlla)' : ''}. Ho compilato area e orario.`;
+      suggerimento = `Nel foglio turni ${t.nome} è in ${nomeArea(t.area, dati.impostazioni).toLowerCase()}${t.postazione ? `, postazione ${t.postazione}` : ''}, ${hhmm(t.inizio)}–${hhmm(t.fine)}${t.orarioDoppio ? ' (orario doppio: controlla)' : ''}. Ho compilato area e orario.`;
     } else suggerimento = '';
   }
 
@@ -62,6 +68,21 @@
   const minIni = $derived(daHHMM(inizio));
   const minFin = $derived(daHHMM(fine));
   const ore = $derived(minIni !== null && minFin !== null && minFin > minIni ? oreDi({ inizio: minIni, fine: minFin }) : null);
+
+  // Come si chiamerebbe il turno senza un nome suo, e quali promemoria erediterebbe
+  const bozza = $derived<Turno>({
+    id: 'bozza', data, area, postazione: area === 'altro' ? undefined : postazione, inizio: minIni ?? 0, fine: minFin ?? 0, origine: 'manuale',
+    sostituisce: sost && sostituisce.trim() ? sostituisce.trim() : undefined,
+  });
+  const titoloAuto = $derived(titoloTurno(bozza, dati.impostazioni));
+  const promemoriaEreditati = $derived(promemoriaDi(bozza, dati.impostazioni));
+  const testoEreditati = $derived(
+    promemoriaEreditati.length ? promemoriaEreditati.map((p) => `${testoPromemoria(p.minuti).toLowerCase()}${p.metodo === 'email' ? ' (email)' : ''}`).join(', ') : 'nessun promemoria',
+  );
+  function attivaPromemoria() {
+    if (!promemoriaPropri) promemoria = [...promemoriaEreditati];
+    promemoriaPropri = !promemoriaPropri;
+  }
 
   const titolo = nuovo ? (r.tipo === 'sost' ? 'Nuova sostituzione' : 'Nuovo turno') : esistente!.origine === 'import' ? 'Turno dal foglio' : esistente!.sostituisce ? 'Sostituzione' : 'Turno';
 
@@ -82,6 +103,8 @@
       sostituisce: sost ? sostituisce.trim() : undefined,
       nota: nota.trim() || undefined,
       annullato: annullato || undefined,
+      nome: nomeTurno.trim() || undefined,
+      promemoria: promemoriaPropri ? $state.snapshot(promemoria) : undefined,
     };
     if (esistente?.origine === 'import') {
       const cambiato = t.data !== esistente.data || t.area !== esistente.area || t.inizio !== esistente.inizio || t.fine !== esistente.fine || !!t.annullato !== !!esistente.annullato || t.sostituisce !== esistente.sostituisce;
@@ -148,7 +171,7 @@
     <span class="lbl">Area</span>
     <div class="seg aree">
       {#each AREE as a (a.id)}
-        <button aria-pressed={area === a.id} onclick={() => (area = a.id)}>{a.breve}</button>
+        <button aria-pressed={area === a.id} onclick={() => (area = a.id)}>{breveArea(a.id, dati.impostazioni)}</button>
       {/each}
     </div>
   </div>
@@ -166,6 +189,24 @@
     <span class="lbl">Nota nel foglio ore (colonna R)</span>
     <input class="inp" bind:value={nota} oninput={() => (notaToccata = true)} placeholder={sost ? 'es. sost greta spogl piccoli' : 'facoltativa'} />
   </label>
+
+  <div class="field">
+    <label class="lbl" for="nome-turno">Nome del turno (facoltativo)</label>
+    <input id="nome-turno" class="inp" bind:value={nomeTurno} placeholder={titoloAuto} />
+    <p class="muted small nomargin">Lo vedi nell'app{gcal.collegato ? ' e come titolo su Google Calendar' : ' e come titolo nel calendario'}. Vuoto: «{titoloAuto}».</p>
+  </div>
+
+  <div class="field">
+    <label class="riga-switch">
+      <span>Promemoria solo per questo turno</span>
+      <button class="switch" role="switch" aria-checked={promemoriaPropri} aria-label="Promemoria solo per questo turno" onclick={attivaPromemoria}><span></span></button>
+    </label>
+    {#if promemoriaPropri}
+      <EditorPromemoria bind:valore={promemoria} etichetta="Promemoria di questo turno" />
+    {:else}
+      <p class="muted small nomargin">Come gli altri: {testoEreditati}.</p>
+    {/if}
+  </div>
 
   {#if esistente}
     <label class="riga-switch">

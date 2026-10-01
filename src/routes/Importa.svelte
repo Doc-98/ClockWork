@@ -154,7 +154,7 @@
         {@const s = scelte[c.chiave]}
         <div class="card doppio">
           <div>
-            <div class="doppio-tit">Orario doppio · {nomeArea(c.area)}</div>
+            <div class="doppio-tit">Orario doppio · {nomeArea(c.area, dati.impostazioni)}</div>
             <div class="muted small">Nel foglio: <span class="m">{c.grezzo}</span> · {c.date.map(giorno).join(', ')}</div>
             <div class="muted small">Quale fai tu? Lo ricordo per le prossime volte.</div>
           </div>
@@ -189,7 +189,7 @@
             <div class="riga-main">
               <div class="riga-top">
                 <span class="gg">{giorno(r.letto.data)}</span>
-                <span class="tag t-{r.letto.area}">{breveArea(r.letto.area)}{r.letto.postazione ? ' · P' + r.letto.postazione : ''}{r.letto.presa ? ' *' : ''}</span>
+                <span class="tag t-{r.letto.area}">{breveArea(r.letto.area, dati.impostazioni)}{r.letto.postazione ? ' · P' + r.letto.postazione : ''}{r.letto.presa ? ' *' : ''}</span>
                 <span class="m ora">{hhmm(r.letto.inizio)}–{hhmm(r.letto.fine)}</span>
               </div>
               {#if !primaImportazione && r.stato === 'nuovo'}
@@ -205,7 +205,7 @@
 
       {#if confronto.rimossi.length}
         <p class="msg err">
-          Non più nel foglio, verranno tolti: {confronto.rimossi.map((t) => `${giorno(t.data)} ${breveArea(t.area)}`).join(', ')}.
+          Non più nel foglio, verranno tolti: {confronto.rimossi.map((t) => `${giorno(t.data)} ${breveArea(t.area, dati.impostazioni)}`).join(', ')}.
         </p>
       {/if}
       {#if confronto.protetti.length}

@@ -14,6 +14,7 @@
   import TurnoView from './routes/Turno.svelte';
   import FoglioOre from './routes/FoglioOre.svelte';
   import Impostazioni from './routes/Impostazioni.svelte';
+  import Personalizza from './routes/Personalizza.svelte';
 
   let aggiornamento = $state<(() => Promise<void>) | undefined>();
 
@@ -56,7 +57,8 @@
   }
 
   const configurato = $derived(!!dati.modello && dati.impostazioni.alias.length > 0);
-  const conNav = $derived(configurato && router.rotta.nome !== 'turno');
+  // Le schermate con «Salva» non hanno la barra: si esce solo salvando o annullando
+  const conNav = $derived(configurato && router.rotta.nome !== 'turno' && router.rotta.nome !== 'personalizza');
 </script>
 
 {#if aggiornamento}
@@ -89,6 +91,8 @@
     <FoglioOre rotta={router.rotta} />
   {:else if router.rotta.nome === 'impostazioni'}
     <Impostazioni />
+  {:else if router.rotta.nome === 'personalizza'}
+    <Personalizza />
   {/if}
 </main>
 

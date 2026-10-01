@@ -13,7 +13,7 @@
   function esportaIcs() {
     const da = inizioFinestra();
     const turni = dati.turni.filter((t) => t.data >= da);
-    const bytes = new TextEncoder().encode(generaIcs(turni));
+    const bytes = new TextEncoder().encode(generaIcs(turni, new Date(), $state.snapshot(dati.impostazioni)));
     scaricaFile(bytes, 'ClockWork-turni.ics', 'text/calendar');
     messaggio = `Esportati ${turni.filter((t) => !t.annullato).length} turni. Aprendo il file, il calendario del telefono propone di aggiungerli.`;
   }

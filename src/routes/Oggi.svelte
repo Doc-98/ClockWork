@@ -80,7 +80,7 @@
       </div>
       <div class="m orario">{hhmm(principale.inizio)}–{hhmm(principale.fine)}</div>
       <div class="dove">
-        {principale.sostituisce ? `Sostituzione di ${principale.sostituisce} · ` : ''}{nomeArea(principale.area)}{principale.postazione ? ` · Postazione ${principale.postazione}` : ''}{principale.presa ? ' · presa' : ''}
+        {principale.sostituisce ? `Sostituzione di ${principale.sostituisce} · ` : ''}{principale.nome?.trim() ? `${principale.nome.trim()} · ` : ''}{nomeArea(principale.area, dati.impostazioni)}{principale.postazione ? ` · Postazione ${principale.postazione}` : ''}{principale.presa ? ' · presa' : ''}
       </div>
       {#if stato === 'in-corso'}
         <div class="bar"><div style="width: {Math.round(progresso * 100)}%"></div></div>

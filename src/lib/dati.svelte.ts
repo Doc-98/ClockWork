@@ -1,5 +1,5 @@
 import { get, set } from 'idb-keyval';
-import { IMPOSTAZIONI_DEFAULT, ordinaTurni, type Impostazioni, type Turno } from './model';
+import { IMPOSTAZIONI_DEFAULT, completaImpostazioni, ordinaTurni, type Impostazioni, type Turno } from './model';
 import type { ScelteOrari } from './turni/importa';
 import { leggiModello, type ModelloSalvato } from './store';
 
@@ -48,7 +48,7 @@ class Dati {
       get<UltimaImportazione>(K.import),
     ]);
     this.turni = (turni ?? []).sort(ordinaTurni);
-    this.impostazioni = { ...IMPOSTAZIONI_DEFAULT, ...imp };
+    this.impostazioni = completaImpostazioni(imp);
     this.scelte = scelte ?? {};
     this.modello = modello;
     this.ultimaImportazione = ultima;
@@ -82,9 +82,13 @@ class Dati {
     return this.setTurni(this.turni.filter((t) => t.id !== id));
   }
 
-  setImpostazioni(imp: Impostazioni) {
+  async setImpostazioni(imp: Impostazioni) {
+    // Nomi delle aree e opzioni del calendario cambiano gli eventi: va avvisato chi li sincronizza
+    const pesa = (i: Impostazioni) => JSON.stringify([i.aree, i.calendario]);
+    const cambiaEventi = pesa($state.snapshot(this.impostazioni)) !== pesa(imp);
     this.impostazioni = imp;
-    return this.salva(K.impostazioni, imp);
+    await this.salva(K.impostazioni, imp);
+    if (cambiaEventi) for (const fn of this.ascoltatori) fn();
   }
 
   setScelte(s: ScelteOrari) {

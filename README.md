@@ -3,6 +3,16 @@
 PWA per organizzare i turni di lavoro e compilare il foglio ore mensile.
 Funziona offline e si installa su iPhone e Android dal browser, senza store.
 
+## Versione 0.6
+
+- **Personalizza** (Impostazioni → Personalizza): nomi delle aree nell'app, titolo degli eventi
+  (un nome per area, es. «Leone 🔽», oppure un modello con segnaposto `{area}`, `{postazione}`,
+  `{collega}`, `{inizio}`, `{fine}`, `{ore}`), luogo, colore e promemoria.
+  Tutto ha un valore predefinito e si può cambiare per area.
+- **Singolo turno**: nome suo (vale nell'app e come titolo dell'evento) e promemoria suoi.
+- Cambiando le impostazioni, gli eventi già su Google Calendar vengono aggiornati alla sincronizzazione.
+  Anche l'export .ics usa titoli, luogo e notifiche.
+
 ## Versione 0.4
 
 - **PDF del foglio ore**: stesso contenuto del file Excel (intestazione, colonne, colori, totale), generato sul telefono.

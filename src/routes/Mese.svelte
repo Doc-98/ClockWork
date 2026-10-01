@@ -1,7 +1,7 @@
 <script lang="ts">
   import { dati } from '../lib/dati.svelte';
   import { router, type Rotta } from '../lib/router.svelte';
-  import { isoDa, dataDa, oreDi, type Area } from '../lib/model';
+  import { isoDa, dataDa, oreDi, breveArea, type Area } from '../lib/model';
   import { formatOre, formatEuro } from '../lib/ore';
   import { MESI } from '../lib/foglio/genera';
   import RigaTurno from '../components/RigaTurno.svelte';
@@ -103,10 +103,10 @@
       {/each}
     </div>
     <div class="legenda">
-      <span><i style="--c: var(--area-m)"></i>Spogl. M</span>
-      <span><i style="--c: var(--area-f)"></i>Spogl. F</span>
-      <span><i style="--c: var(--area-p)"></i>Piccoli</span>
-      <span><i class="quadro" style="--c: var(--area-a)"></i>Atrio</span>
+      <span><i style="--c: var(--area-m)"></i>{breveArea('maschile', dati.impostazioni)}</span>
+      <span><i style="--c: var(--area-f)"></i>{breveArea('femminile', dati.impostazioni)}</span>
+      <span><i style="--c: var(--area-p)"></i>{breveArea('piccoli', dati.impostazioni)}</span>
+      <span><i class="quadro" style="--c: var(--area-a)"></i>{breveArea('atrio', dati.impostazioni)}</span>
       <span><i class="ring" style="--c: var(--muted)"></i>Sostituzione</span>
     </div>
   </div>

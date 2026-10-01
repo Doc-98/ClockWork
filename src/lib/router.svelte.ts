@@ -9,7 +9,8 @@ export type Rotta =
   | { nome: 'importa' }
   | { nome: 'foglio'; ym?: string }
   | { nome: 'turno'; id?: string; data?: string; tipo?: 'sost' }
-  | { nome: 'impostazioni' };
+  | { nome: 'impostazioni' }
+  | { nome: 'personalizza' };
 
 function leggi(): Rotta {
   const h = location.hash.replace(/^#\/?/, '');
@@ -27,6 +28,8 @@ function leggi(): Rotta {
       return { nome: 'turno', id: b && b !== 'nuovo' ? b : undefined, data: q.get('data') ?? undefined, tipo: q.get('tipo') === 'sost' ? 'sost' : undefined };
     case 'impostazioni':
       return { nome: 'impostazioni' };
+    case 'personalizza':
+      return { nome: 'personalizza' };
     default:
       return { nome: 'oggi' };
   }

@@ -4,7 +4,7 @@
   import { dati } from '../lib/dati.svelte';
   import { router } from '../lib/router.svelte';
   import { scaricaFile } from '../lib/foglio/condividi';
-  import { ordinaTurni, type Turno } from '../lib/model';
+  import { completaImpostazioni, ordinaTurni, type Turno } from '../lib/model';
   import Icona from '../components/Icona.svelte';
   import CardCalendario from '../components/CardCalendario.svelte';
   import { tema, type SceltaTema } from '../lib/tema.svelte';
@@ -26,7 +26,7 @@
     if (!alias.length) return (errore = 'Serve almeno un nome.');
     if (!(t >= 0)) return (errore = 'Tariffa non valida.');
     errore = '';
-    dati.setImpostazioni({ alias, tariffa: t });
+    dati.setImpostazioni({ ...dati.impostazioni, alias, tariffa: t });
     messaggio = 'Impostazioni salvate.';
   }
 
@@ -73,7 +73,7 @@
       if (b?.app !== 'ClockWork' || !Array.isArray(b.turni)) throw new Error();
       const turni = (b.turni as Turno[]).filter((t) => t && typeof t.data === 'string' && typeof t.inizio === 'number' && typeof t.fine === 'number');
       await dati.setTurni(turni.sort(ordinaTurni));
-      if (b.impostazioni) await dati.setImpostazioni({ ...dati.impostazioni, ...b.impostazioni });
+      if (b.impostazioni) await dati.setImpostazioni(completaImpostazioni({ ...dati.impostazioni, ...b.impostazioni }));
       if (b.scelteOrari) await dati.setScelte(b.scelteOrari);
       nome = dati.impostazioni.alias.join(', ');
       errore = '';
@@ -120,6 +120,15 @@
     </div>
   </div>
 
+  <a class="card box personalizza" href="#/personalizza">
+    <div class="grow">
+      <div class="lbl">Personalizza</div>
+      <div class="titolo-link">Nomi dei turni ed eventi del calendario</div>
+      <p class="muted small">Titoli, promemoria, luogo e colori, anche diversi per area.</p>
+    </div>
+    <Icona nome="dx" class="chev" />
+  </a>
+
   <CardCalendario />
 
   <div class="card box">
@@ -143,6 +152,8 @@
 <style>
   .top { min-height: 44px; display: flex; align-items: center; margin-bottom: -8px; }
   .box { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+  .personalizza { flex-direction: row; align-items: center; color: var(--ink); text-decoration: none; }
+  .titolo-link { font-weight: 600; margin-top: 4px; }
   .file { font-weight: 600; margin-top: 4px; word-break: break-word; }
   p { margin: 4px 0 0; }
 </style>

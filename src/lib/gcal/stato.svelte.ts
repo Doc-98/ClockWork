@@ -124,7 +124,7 @@ class Gcal {
       const da = inizioFinestra();
       const remoti = await api.elencaEventi(token, calId, `${da}T00:00:00Z`);
       const turni = dati.turni.filter((t) => t.data >= da);
-      const piano = pianoSync(turni, remoti);
+      const piano = pianoSync(turni, remoti, $state.snapshot(dati.impostazioni));
       const lavori: (() => Promise<unknown>)[] = [
         ...piano.crea.map((c) => () => api.creaEvento(token, calId, c.evento)),
         ...piano.aggiorna.map((a) => () => api.aggiornaEvento(token, calId, a.eventId, a.evento)),

@@ -127,6 +127,10 @@ export function applicaImport(esistenti: Turno[], confermati: TurnoLetto[], year
         fine: l.fine,
         origine: 'import',
         presa: l.presa || undefined,
+        // ciò che hai aggiunto tu a un turno del foglio sopravvive alle nuove importazioni
+        nome: prima?.nome,
+        nota: prima?.nota,
+        promemoria: prima?.promemoria,
         calendarEventId: prima?.calendarEventId,
       };
     });

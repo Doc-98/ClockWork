@@ -1,5 +1,5 @@
-import { titoloTurno, eventoDaTurno } from './eventi';
-import type { Turno } from '../model';
+import { eventoDaTurno } from './eventi';
+import { IMPOSTAZIONI_DEFAULT, type Impostazioni, type Turno } from '../model';
 
 /**
  * File .ics con i turni: funziona con qualunque calendario (Apple, Google, Outlook), senza accesso.
@@ -32,7 +32,7 @@ function piega(riga: string): string {
 const locale = (data: string, min: number) =>
   `${data.replace(/-/g, '')}T${String(Math.floor(min / 60)).padStart(2, '0')}${String(min % 60).padStart(2, '0')}00`;
 
-export function generaIcs(turni: Turno[], ora = new Date()): string {
+export function generaIcs(turni: Turno[], ora = new Date(), imp: Pick<Impostazioni, 'aree' | 'calendario'> = IMPOSTAZIONI_DEFAULT): string {
   const stamp = ora.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
   const righe = [
     'BEGIN:VCALENDAR',
@@ -62,16 +62,21 @@ export function generaIcs(turni: Turno[], ora = new Date()): string {
   ];
   for (const t of turni) {
     if (t.annullato) continue;
-    const e = eventoDaTurno(t);
+    const e = eventoDaTurno(t, imp);
+    // Le notifiche diventano allarmi; quelli via email in un .ics richiederebbero un destinatario, quindi restano fuori
+    const allarmi = (e.reminders?.overrides ?? [])
+      .filter((r) => r.method === 'popup')
+      .flatMap((r) => ['BEGIN:VALARM', 'ACTION:DISPLAY', piega(`DESCRIPTION:${esc(e.summary)}`), `TRIGGER:-PT${r.minutes}M`, 'END:VALARM']);
     righe.push(
       'BEGIN:VEVENT',
       `UID:${t.id}@clockwork`,
       `DTSTAMP:${stamp}`,
       `DTSTART;TZID=Europe/Rome:${locale(t.data, t.inizio)}`,
       `DTEND;TZID=Europe/Rome:${locale(t.data, t.fine)}`,
-      piega(`SUMMARY:${esc(titoloTurno(t))}`),
+      piega(`SUMMARY:${esc(e.summary)}`),
       piega(`DESCRIPTION:${esc(e.description ?? '')}`),
-      piega(`LOCATION:${esc(e.location ?? '')}`),
+      ...(e.location ? [piega(`LOCATION:${esc(e.location)}`)] : []),
+      ...allarmi,
       'END:VEVENT',
     );
   }
