@@ -1,0 +1,10 @@
+# Categorie per le note generate in automatico («Generate release notes»),
+# in base alle etichette delle pull request.
+changelog:
+  categories:
+    - title: Novità
+      labels: [enhancement]
+    - title: Correzioni
+      labels: [bug]
+    - title: Altro
+      labels: ["*"]

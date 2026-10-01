@@ -66,9 +66,28 @@ I test sul modello reale leggono `fixtures/private/generico.xlsx`, che **non** �
 
 ## Pubblicazione
 
-A ogni push su `main`, GitHub Actions esegue controlli e test e pubblica su GitHub Pages
-(`.github/workflows/deploy.yml`). Nelle impostazioni del repository: Settings → Pages →
-Source: **GitHub Actions**.
+Il sito su GitHub Pages si aggiorna **solo quando si pubblica una release**. I push su `main`
+e le pull request vengono soltanto controllati (tipi, test, build: `.github/workflows/ci.yml`),
+così `main` può contenere lavoro non ancora pronto.
+
+Per pubblicare una nuova versione:
+
+1. Aggiorna `version` in `package.json` (es. `0.7.0`) e la sezione del README, e porta tutto su `main`.
+2. Su GitHub: Releases → **Draft a new release** → tag `v0.7.0` (nuovo, su `main`) →
+   **Generate release notes** → Publish.
+3. Parte `.github/workflows/deploy.yml`: controlla che il tag corrisponda a `package.json`,
+   esegue i test e pubblica. Sul telefono la PWA proporrà l'aggiornamento.
+
+Una release segnata come **pre-release** non viene pubblicata sul sito. In caso di emergenza
+il deploy si può lanciare a mano da Actions → «Pubblica su GitHub Pages» → Run workflow.
+
+Versioni: `0.x` finché l'app non è stabile; si alza il numero centrale per le novità
+(`0.6.0 → 0.7.0`) e l'ultimo per le sole correzioni (`0.7.0 → 0.7.1`).
+
+Impostazioni del repository necessarie:
+- Settings → Pages → Source: **GitHub Actions**.
+- Settings → Environments → `github-pages` → Deployment branches and tags: aggiungi la regola
+  per i tag `v*` (di base è ammesso solo `main` e il deploy da una release verrebbe rifiutato).
 
 ## Google Calendar: configurazione
 

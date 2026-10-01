@@ -1,8 +1,10 @@
 name: Pubblica su GitHub Pages
 
+# Il sito si aggiorna solo quando pubblichi una release (non pre-release).
+# I push su main vengono solo controllati da ci.yml.
 on:
-  push:
-    branches: [main]
+  release:
+    types: [released]
   workflow_dispatch:
 
 permissions:
@@ -19,6 +21,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Il tag corrisponde alla versione in package.json
+        if: github.event_name == 'release'
+        run: |
+          tag="${{ github.event.release.tag_name }}"
+          versione="v$(node -p "require('./package.json').version")"
+          if [ "$tag" != "$versione" ]; then
+            echo "::error::Il tag della release è $tag ma package.json dice $versione. Aggiorna la versione o rifai il tag."
+            exit 1
+          fi
       - uses: actions/setup-node@v4
         with:
           node-version: 22
