@@ -81,11 +81,9 @@
 
 <style>
   .step { display: flex; gap: 14px; padding: 16px; }
-  .n { width: 28px; height: 28px; border-radius: 50%; background: var(--ink); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; }
+  .n { width: 28px; height: 28px; border-radius: 50%; background: var(--fill); color: var(--on-fill); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: var(--text-md); flex-shrink: 0; }
   .done .n { background: var(--ok); }
   .body { display: flex; flex-direction: column; gap: 10px; flex-grow: 1; min-width: 0; }
-  h2 { margin: 2px 0 0; font-size: 16px; }
+  h2 { margin: 2px 0 0; font-size: var(--text-lg); }
   p { margin: 0; }
-  .upload { position: relative; overflow: hidden; }
-  .upload input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 </style>

@@ -4,6 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#10212B" />
+    <script>
+      // Tema prima del primo disegno, così non lampeggia. Stessa logica di src/lib/tema.ts.
+      (function () {
+        var s = 'sistema';
+        try { s = localStorage.getItem('clockwork-tema') || 'sistema'; } catch (e) {}
+        var scuro = s === 'scuro' || (s !== 'chiaro' && matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.dataset.tema = scuro ? 'scuro' : 'chiaro';
+        if (scuro) document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0E1A21');
+      })();
+    </script>
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="ClockWork" />

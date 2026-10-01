@@ -26,11 +26,11 @@
 <style>
   .riga { display: flex; align-items: center; gap: 12px; padding: 10px 10px 10px 14px; color: var(--ink); text-decoration: none; min-height: 60px; }
   .data { width: 38px; text-align: center; flex-shrink: 0; }
-  .gg { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; }
-  .num { font-size: 20px; font-weight: 700; line-height: 1; }
+  .gg { font-size: var(--text-2xs); font-weight: 600; color: var(--muted); text-transform: uppercase; }
+  .num { font-size: var(--text-2xl); font-weight: 700; line-height: 1; }
   .centro { flex-grow: 1; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 8px; min-width: 0; }
-  .ora { font-size: 15px; font-weight: 500; }
-  .ore { font-size: 13px; color: var(--muted); text-align: right; min-width: 48px; }
+  .ora { font-size: var(--text-base); font-weight: 500; }
+  .ore { font-size: var(--text-sm); color: var(--muted); text-align: right; min-width: 48px; }
   .annullato .ora, .annullato .num { text-decoration: line-through; color: var(--muted); }
-  :global(.chev) { color: #9aa5ab; width: 18px; height: 18px; }
+  :global(.chev) { color: var(--chevron); width: 18px; height: 18px; }
 </style>

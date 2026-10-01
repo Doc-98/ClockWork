@@ -62,7 +62,7 @@
 {#if aggiornamento}
   <div class="banner" role="status">
     <span>È disponibile una nuova versione.</span>
-    <button class="btn btn-accent small-btn" onclick={() => aggiornamento?.()}>Aggiorna</button>
+    <button class="btn btn-accent small-btn tap44" onclick={() => aggiornamento?.()}>Aggiorna</button>
   </div>
 {/if}
 
@@ -108,8 +108,8 @@
     position: sticky; top: 0; z-index: 30;
     display: flex; align-items: center; justify-content: space-between; gap: 12px;
     padding: calc(env(safe-area-inset-top, 0px) + 10px) 20px 10px;
-    background: var(--cloro-soft); color: #1d3a40; font-size: 14px;
+    background: var(--cloro-soft); color: var(--cloro-ink); font-size: var(--text-md);
   }
-  .small-btn { height: 36px; padding: 0 14px; font-size: 14px; }
+  .small-btn { height: 36px; padding: 0 14px; font-size: var(--text-md); }
   .top-msg { max-width: 440px; margin: 12px auto 0; }
 </style>

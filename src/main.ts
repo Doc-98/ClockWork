@@ -9,6 +9,7 @@ import '@fontsource/bricolage-grotesque/latin-700.css';
 import '@fontsource/bricolage-grotesque/latin-800.css';
 import './app.css';
 import App from './App.svelte';
+import './lib/tema.svelte';
 
 const app = mount(App, { target: document.getElementById('app')! });
 
