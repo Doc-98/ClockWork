@@ -21,6 +21,9 @@ export default defineConfig({
         short_name: 'ClockWork',
         description: 'Turni e foglio ore per Leone XIII Sport',
         lang: 'it',
+        // identità esplicita e diversa dallo start_url: Chrome Android aveva un record
+        // "già installata" fantasma legato all'identità implicita (= start_url)
+        id: `${base}?app=clockwork`,
         start_url: base,
         scope: base,
         display: 'standalone',
