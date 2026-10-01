@@ -33,7 +33,7 @@ export default defineConfig({
         icons: [
           { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
-          // disegno all'80%: le corsie restano dentro il cerchio sicuro che Android non ritaglia
+          // C-orologio all'86%: arriva a 165px dal centro, ben dentro il cerchio sicuro (205px) che Android non ritaglia
           { src: 'icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
