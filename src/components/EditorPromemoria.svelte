@@ -42,10 +42,10 @@
 </div>
 
 <style>
-  .editor { display: flex; flex-direction: column; gap: 8px; }
-  .riga { display: grid; grid-template-columns: minmax(0, 1fr) 112px 44px; gap: 6px; align-items: center; }
-  select.inp { padding: 0 10px; appearance: auto; }
+  .editor { display: flex; flex-direction: column; gap: var(--space-8); }
+  .riga { display: grid; grid-template-columns: minmax(0, 1fr) 112px 44px; gap: var(--space-6); align-items: center; }
+  select.inp { padding: 0 var(--space-10); appearance: auto; }
   .vuoto { margin: 0; }
-  .aggiungi { align-self: flex-start; gap: 6px; }
+  .aggiungi { align-self: flex-start; gap: var(--space-6); }
   .aggiungi :global(.ic) { width: 18px; height: 18px; }
 </style>

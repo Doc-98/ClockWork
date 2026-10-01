@@ -218,22 +218,22 @@
 <style>
   .bar { display: grid; grid-template-columns: 80px 1fr 80px; align-items: center; min-height: 44px; }
   h1 { margin: 0; text-align: center; font-size: var(--text-lg); font-weight: 700; }
-  .sez { margin: 8px 0 -6px; }
-  .box { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+  .sez { margin: var(--space-8) 0 calc(var(--space-6) * -1); }
+  .box { padding: var(--space-16); display: flex; flex-direction: column; gap: var(--space-14); }
   .seg.due { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .sep { height: 1px; background: var(--line-soft); }
-  .anteprima ul { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-  .anteprima li { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .anteprima ul { list-style: none; margin: var(--space-8) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-6); }
+  .anteprima li { display: flex; align-items: center; gap: var(--space-8); min-width: 0; }
   .anteprima .tag { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
   .area { overflow: hidden; }
-  .area-head { width: 100%; min-height: 64px; display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 14px; background: none; border: none; color: var(--ink); text-align: left; cursor: pointer; }
-  .area-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .area-head { width: 100%; min-height: 64px; display: flex; align-items: center; gap: var(--space-12); padding: var(--space-10) var(--space-12) var(--space-10) var(--space-14); background: none; border: none; color: var(--ink); text-align: left; cursor: pointer; }
+  .area-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-2); }
   .area-info .small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .area-nome { font-weight: 600; }
   .area-head :global(.chev) { color: var(--chevron); width: 20px; height: 20px; transition: transform 0.15s; }
   .area-head :global(.chev.su) { transform: rotate(180deg); }
-  .area-body { display: flex; flex-direction: column; gap: 14px; padding: 4px 16px 16px; border-top: 1px solid var(--line-soft); padding-top: 14px; }
-  .due-col { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 10px; }
-  .riga-switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: var(--text-base); font-weight: 500; cursor: pointer; min-height: 44px; }
-  .azioni { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+  .area-body { display: flex; flex-direction: column; gap: var(--space-14); padding: var(--space-4) var(--space-16) var(--space-16); border-top: 1px solid var(--line-soft); padding-top: var(--space-14); }
+  .due-col { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: var(--space-10); }
+  .riga-switch { display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); font-size: var(--text-base); font-weight: 500; cursor: pointer; min-height: 44px; }
+  .azioni { display: flex; flex-direction: column; gap: var(--space-8); margin-top: var(--space-4); }
 </style>

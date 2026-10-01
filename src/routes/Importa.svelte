@@ -353,7 +353,7 @@
 </section>
 
 <style>
-  .file { display: flex; align-items: center; gap: 12px; }
+  .file { display: flex; align-items: center; gap: var(--space-12); }
   .file.solo { padding: 12px 14px; }
   .fonte { padding: 14px; display: flex; flex-direction: column; gap: 12px; }
   .fonte .nome { white-space: normal; }
@@ -364,31 +364,31 @@
   .link-azioni { gap: 20px; margin: -8px 0 -10px; }
   .oppure { display: flex; align-items: center; gap: 10px; margin: -4px 0; }
   .oppure::before, .oppure::after { content: ''; flex: 1; height: 1px; background: var(--line); }
-  .file-ic { width: 40px; height: 40px; border-radius: 10px; background: var(--cloro-soft); color: var(--cloro); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .file-ic { width: 40px; height: 40px; border-radius: var(--radius-sm); background: var(--cloro-soft); color: var(--cloro); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .file-txt { flex-grow: 1; min-width: 0; }
   .nome { font-size: var(--text-md); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .inline { color: var(--cloro); font-weight: 600; }
-  .scegli { height: 44px; padding: 0 14px; font-size: var(--text-md); }
-  .chips { flex-wrap: nowrap; overflow-x: auto; margin: 0 -20px; padding: 4px 20px; scrollbar-width: none; }
+  .scegli { height: 44px; padding: 0 var(--space-14); font-size: var(--text-md); }
+  .chips { flex-wrap: nowrap; overflow-x: auto; margin: 0 calc(var(--space-20) * -1); padding: var(--space-4) var(--space-20); scrollbar-width: none; }
   .chip { flex-shrink: 0; }
-  .riepilogo { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; background: var(--cloro-soft); border-radius: 14px; padding: 12px 14px; }
+  .riepilogo { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); flex-wrap: wrap; background: var(--cloro-soft); border-radius: var(--radius-lg); padding: var(--space-12) var(--space-14); }
   .n { font-size: var(--text-2xl); font-weight: 800; }
-  .tags { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tags { display: flex; gap: var(--space-6); flex-wrap: wrap; }
   .tags .tag { background: var(--surface); }
   .tags .t-warn { background: var(--warn-bg); }
-  .doppio { padding: 14px; display: flex; flex-direction: column; gap: 10px; border-color: var(--warn-line); }
+  .doppio { padding: var(--space-14); display: flex; flex-direction: column; gap: var(--space-10); border-color: var(--warn-line); }
   .doppio-tit { font-weight: 700; font-size: var(--text-base); }
-  .doppio-row { display: grid; grid-template-columns: 52px 1fr; align-items: center; gap: 8px; }
+  .doppio-row { display: grid; grid-template-columns: 52px 1fr; align-items: center; gap: var(--space-8); }
   .lista { overflow: hidden; }
-  .riga { display: flex; align-items: center; gap: 10px; padding: 8px 14px; min-height: 52px; border-top: 1px solid var(--line-soft); cursor: pointer; }
+  .riga { display: flex; align-items: center; gap: var(--space-10); padding: var(--space-8) var(--space-14); min-height: 52px; border-top: 1px solid var(--line-soft); cursor: pointer; }
   .riga:first-child { border-top: none; }
   .riga.evid { background: var(--warn-bg); }
   .riga input { width: 20px; height: 20px; accent-color: var(--cloro); margin: 0; flex-shrink: 0; }
   .riga-main { flex-grow: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-  .riga-top { display: flex; align-items: center; gap: 8px; }
+  .riga-top { display: flex; align-items: center; gap: var(--space-8); }
   .gg { width: 48px; font-size: var(--text-sm); font-weight: 600; flex-shrink: 0; }
   .ora { margin-left: auto; font-size: var(--text-sm); }
   .nota-riga { font-size: var(--text-xs); color: var(--warn); padding-left: 56px; }
   .ore { width: 36px; text-align: right; font-size: var(--text-sm); color: var(--muted); }
-  .azioni { display: flex; flex-direction: column; gap: 10px; }
+  .azioni { display: flex; flex-direction: column; gap: var(--space-10); }
 </style>

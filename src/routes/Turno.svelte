@@ -228,14 +228,14 @@
 <style>
   .bar { display: grid; grid-template-columns: 80px 1fr 80px; align-items: center; min-height: 44px; }
   h1 { margin: 0; text-align: center; font-size: var(--text-lg); font-weight: 700; }
-  .riga-switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; font-size: var(--text-base); font-weight: 500; cursor: pointer; }
-  .hint { display: flex; gap: 8px; align-items: flex-start; background: var(--cloro-soft); color: var(--cloro-ink); border-radius: 12px; padding: 10px 12px; font-size: var(--text-sm); line-height: 1.4; }
+  .riga-switch { display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: var(--space-10) var(--space-14); font-size: var(--text-base); font-weight: 500; cursor: pointer; }
+  .hint { display: flex; gap: var(--space-8); align-items: flex-start; background: var(--cloro-soft); color: var(--cloro-ink); border-radius: var(--radius-md); padding: var(--space-10) var(--space-12); font-size: var(--text-sm); line-height: 1.4; }
   .hint :global(.ic) { width: 18px; height: 18px; margin-top: 1px; }
   .aree { grid-template-columns: repeat(5, minmax(0, 1fr)); }
   .aree button { font-size: var(--text-xs); }
-  .orari { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-  .sub { display: flex; flex-direction: column; gap: 4px; font-size: var(--text-xs); color: var(--muted); }
+  .orari { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-10); }
+  .sub { display: flex; flex-direction: column; gap: var(--space-4); font-size: var(--text-xs); color: var(--muted); }
   .durata { display: flex; justify-content: space-between; font-size: var(--text-sm); }
   .durata .m { font-weight: 600; }
-  .azioni { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+  .azioni { display: flex; flex-direction: column; gap: var(--space-8); margin-top: var(--space-4); }
 </style>

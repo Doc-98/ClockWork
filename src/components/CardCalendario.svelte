@@ -107,12 +107,12 @@
 </div>
 
 <style>
-  .box { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
-  p { margin: 4px 0 0; }
-  .stato { display: flex; align-items: center; gap: 8px; font-weight: 600; margin-top: 6px; }
+  .box { padding: var(--space-16); display: flex; flex-direction: column; gap: var(--space-12); }
+  p { margin: var(--space-4) 0 0; }
+  .stato { display: flex; align-items: center; gap: var(--space-8); font-weight: 600; margin-top: var(--space-6); }
   .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
-  .scollega { display: flex; flex-direction: column; gap: 8px; }
-  .sep { height: 1px; background: var(--line-soft); margin: 4px 0; }
+  .scollega { display: flex; flex-direction: column; gap: var(--space-8); }
+  .sep { height: 1px; background: var(--line-soft); margin: var(--space-4) 0; }
   .m { word-break: break-all; }
   .doppioni { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 12px; background: var(--warn-bg); color: var(--warn); border: 1px solid var(--warn-line); }
   .doppioni .tit { font-weight: 700; margin: 0; }
