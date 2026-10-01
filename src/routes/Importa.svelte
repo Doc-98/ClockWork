@@ -114,6 +114,8 @@
   // Foglio Google collegato con il link
   let link = $state('');
   let chiave = $state('');
+  // Una chiave API di Google: «AIza» + 35 caratteri. Evita di salvare per sbaglio il link del foglio.
+  const chiaveValida = $derived(/^AIza[\w-]{35}$/.test(chiave.trim()));
   let erroreFonte = $state('');
   let messaggioFonte = $state('');
   let cambiaLink = $state(false);
@@ -130,6 +132,8 @@
       cambiaLink = false;
     } catch (e) {
       erroreFonte = e instanceof FoglioNonRaggiungibile ? e.message : 'Non riesco a leggere il foglio: è quello dei turni?';
+      // Chiave inserita a mano e rifiutata da Google: la si toglie, così si può reinserire
+      if (!API_KEY_BUILD && e instanceof FoglioNonRaggiungibile && /chiave API/.test(e.message)) await fonte.setChiaveLocale('');
     }
   }
 
@@ -200,11 +204,17 @@
         <p class="muted small nomargin">Incolla il link del foglio turni condiviso dalla società: dopo, l'app controlla da sola i turni nuovi ogni mese.</p>
       </div>
       {#if !fonte.chiave}
-        <label class="field">
-          <span class="lbl">Chiave API Google (configurazione)</span>
-          <input class="inp m" bind:value={chiave} placeholder="AIza…" autocomplete="off" />
-        </label>
-        <button class="btn btn-secondary" disabled={!chiave.trim()} onclick={() => fonte.setChiaveLocale(chiave)}>Salva chiave</button>
+        <!-- Succede solo se l'app è stata pubblicata senza la variabile GOOGLE_API_KEY -->
+        <p class="msg err nomargin">Il collegamento ai fogli Google non è ancora attivo in questa versione dell'app. Per ora carica il file qui sotto.</p>
+        <details class="config">
+          <summary class="link small">Configurazione per sviluppatori</summary>
+          <label class="field">
+            <span class="lbl">Chiave API Google</span>
+            <input class="inp m" bind:value={chiave} placeholder="AIza…" autocomplete="off" />
+          </label>
+          <p class="muted small nomargin">Non è il link del foglio: è la chiave del progetto Google (inizia con «AIza»). Di solito arriva già con l'app.</p>
+          <button class="btn btn-secondary" disabled={!chiaveValida} onclick={() => fonte.setChiaveLocale(chiave)}>Salva chiave</button>
+        </details>
       {:else}
         <label class="field">
           <span class="lbl">Link del foglio turni</span>
@@ -214,7 +224,6 @@
           <button class="btn btn-primary grow" disabled={!link.trim() || fonte.lavoro} onclick={collegaFoglio}>{fonte.lavoro ? 'Leggo il foglio…' : 'Collega'}</button>
           {#if cambiaLink}<button class="btn btn-secondary" onclick={() => (cambiaLink = false)}>Annulla</button>{/if}
         </div>
-        {#if !API_KEY_BUILD}<button class="link small" onclick={() => fonte.setChiaveLocale('')}>Cambia chiave API</button>{/if}
       {/if}
       {#if erroreFonte}<p class="msg err" role="alert">{erroreFonte}</p>{/if}
     </div>
@@ -348,6 +357,10 @@
   .file.solo { padding: 12px 14px; }
   .fonte { padding: 14px; display: flex; flex-direction: column; gap: 12px; }
   .fonte .nome { white-space: normal; }
+  .config { display: flex; flex-direction: column; gap: 10px; }
+  .config[open] { gap: 12px; }
+  .config summary { cursor: pointer; list-style: none; }
+  .config > :not(summary) { margin-top: 10px; }
   .link-azioni { gap: 20px; margin: -8px 0 -10px; }
   .oppure { display: flex; align-items: center; gap: 10px; margin: -4px 0; }
   .oppure::before, .oppure::after { content: ''; flex: 1; height: 1px; background: var(--line); }
