@@ -41,7 +41,7 @@
       if (d < 1 || d > giorni) return null;
       const iso = isoDa(new Date(ym.year, ym.month - 1, d));
       const ts = attivi.filter((t) => t.data === iso);
-      return { d, iso, punti: ts.map((t) => ({ colore: COLORI[t.area], sost: !!t.sostituisce })) };
+      return { d, iso, punti: ts.map((t) => ({ colore: COLORI[t.area], sost: !!t.sostituisce, quadro: t.area === 'atrio' })) };
     });
   });
 
@@ -93,7 +93,7 @@
             <span class="m num">{c.d}</span>
             <span class="punti">
               {#each c.punti as p, j (j)}
-                <span class="punto" class:ring={p.sost} style="--c: {p.colore}"></span>
+                <span class="punto" class:ring={p.sost} class:quadro={p.quadro} style="--c: {p.colore}"></span>
               {/each}
             </span>
           </button>
@@ -106,7 +106,7 @@
       <span><i style="--c: var(--area-m)"></i>Spogl. M</span>
       <span><i style="--c: var(--area-f)"></i>Spogl. F</span>
       <span><i style="--c: var(--area-p)"></i>Piccoli</span>
-      <span><i style="--c: var(--area-a)"></i>Atrio</span>
+      <span><i class="quadro" style="--c: var(--area-a)"></i>Atrio</span>
       <span><i class="ring" style="--c: var(--muted)"></i>Sostituzione</span>
     </div>
   </div>
@@ -148,10 +148,14 @@
   .punti { display: flex; gap: 3px; height: 8px; align-items: center; }
   .punto { width: 7px; height: 7px; border-radius: 50%; background: var(--c); }
   .punto.ring { background: transparent; border: 2px solid var(--c); width: 8px; height: 8px; box-sizing: border-box; }
+  /* Atrio: quadratino invece del pallino. Il suo viola e il blu del maschile si confondono
+     (ΔE 16, 3 con protanopia): la forma li distingue anche senza colore. */
+  .punto.quadro { border-radius: 2px; }
   .sel .punto { outline: 1.5px solid #fff; }
   .legenda { display: flex; flex-wrap: wrap; gap: 6px 12px; padding: 10px 4px 2px; font-size: 12px; color: var(--muted); }
   .legenda span { display: inline-flex; align-items: center; gap: 6px; }
   .legenda i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); display: inline-block; }
+  .legenda i.quadro { border-radius: 2px; }
   .legenda i.ring { background: transparent; border: 2px solid var(--c); width: 9px; height: 9px; box-sizing: border-box; }
   .giorno-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: -6px; }
   h2 { margin: 0; font-size: 17px; }

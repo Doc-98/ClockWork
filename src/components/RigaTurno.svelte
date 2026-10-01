@@ -32,5 +32,5 @@
   .ora { font-size: 15px; font-weight: 500; }
   .ore { font-size: 13px; color: var(--muted); text-align: right; min-width: 48px; }
   .annullato .ora, .annullato .num { text-decoration: line-through; color: var(--muted); }
-  :global(.chev) { color: #9aa5ab; width: 18px; height: 18px; }
+  :global(.chev) { color: var(--chevron); width: 18px; height: 18px; }
 </style>
