@@ -5,6 +5,7 @@
   import { gcal } from './lib/gcal/stato.svelte';
   import { router } from './lib/router.svelte';
   import { chiediArchivioPersistente } from './lib/store';
+  import { swipe, animaIngresso } from './lib/swipe';
   import Nav from './components/Nav.svelte';
   import Benvenuto from './routes/Benvenuto.svelte';
   import Oggi from './routes/Oggi.svelte';
@@ -27,6 +28,33 @@
     });
   });
 
+  // Schede principali, nell'ordine della barra in basso
+  const SCHEDE = [
+    { nome: 'oggi', href: '#/' },
+    { nome: 'mese', href: '#/mese' },
+    { nome: 'importa', href: '#/importa' },
+    { nome: 'foglio', href: '#/foglio' },
+  ] as const;
+  const indiceScheda = (nome: string) => SCHEDE.findIndex((s) => s.nome === nome);
+
+  let mainEl = $state<HTMLElement>();
+  let schedaPrecedente = router.rotta.nome as string;
+  $effect(() => {
+    const nome = router.rotta.nome;
+    const a = indiceScheda(schedaPrecedente);
+    const b = indiceScheda(nome);
+    if (mainEl && a >= 0 && b >= 0 && a !== b) animaIngresso(mainEl, b > a ? 1 : -1);
+    schedaPrecedente = nome;
+  });
+
+  function vaiScheda(direzione: -1 | 1): boolean {
+    const i = indiceScheda(router.rotta.nome);
+    const dest = SCHEDE[i + direzione];
+    if (i < 0 || !dest) return false;
+    router.vai(dest.href, true);
+    return true;
+  }
+
   const configurato = $derived(!!dati.modello && dati.impostazioni.alias.length > 0);
   const conNav = $derived(configurato && router.rotta.nome !== 'turno');
 </script>
@@ -42,7 +70,7 @@
   <p class="msg err top-msg" role="alert">{dati.erroreSalvataggio}</p>
 {/if}
 
-<main class:con-nav={conNav}>
+<main class:con-nav={conNav} bind:this={mainEl} use:swipe={{ vai: vaiScheda, attivo: () => conNav && indiceScheda(router.rotta.nome) >= 0 }}>
   {#if !dati.pronto}
     <p class="lbl center">Caricamento…</p>
   {:else if !configurato}

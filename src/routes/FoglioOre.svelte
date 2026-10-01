@@ -3,7 +3,7 @@
   import { router, type Rotta } from '../lib/router.svelte';
   import { generaFoglioOre, MESI } from '../lib/foglio/genera';
   import { vociDaTurni } from '../lib/foglio/daTurni';
-  import { condividiFile, scaricaFile } from '../lib/foglio/condividi';
+  import { condividiFile, scaricaFile, fileCondivisibile } from '../lib/foglio/condividi';
   import { formatOre, formatEuro } from '../lib/ore';
   import Icona from '../components/Icona.svelte';
 
@@ -31,25 +31,45 @@
     router.vai(`#/foglio/${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`, true);
   }
 
-  async function genera(azione: 'condividi' | 'scarica') {
-    messaggio = errore = '';
-    if (!dati.modello) return (errore = 'Carica prima il modello del foglio ore nelle impostazioni.');
-    lavoro = true;
+  // Il file viene preparato in anticipo: al tocco su «Condividi» il menu deve aprirsi subito,
+  // altrimenti il telefono considera la richiesta non partita dal tocco e la blocca.
+  const pronto = $derived.by(() => {
+    if (!dati.modello || !voci.length) return undefined;
     try {
       const out = generaFoglioOre(dati.modello.bytes, { year: ym.year, month: ym.month, voci });
-      if (azione === 'scarica') {
-        scaricaFile(out.bytes, out.nomeFile);
-        messaggio = `Scaricato: ${out.nomeFile}`;
-      } else {
-        const esito = await condividiFile(out.bytes, out.nomeFile);
-        messaggio = esito === 'condiviso' ? 'Foglio ore condiviso.' : esito === 'scaricato' ? `Scaricato: ${out.nomeFile}` : '';
-      }
+      return { ...out, file: fileCondivisibile(out.bytes, out.nomeFile) };
     } catch (e) {
-      errore = e instanceof Error ? e.message : 'Errore durante la creazione del file.';
-    } finally {
-      lavoro = false;
+      return { errore: e instanceof Error ? e.message : 'Errore durante la creazione del file.' };
+    }
+  });
+
+  // Letto dal template: così il file si prepara subito e non al momento del tocco
+  const fileOk = $derived(!!pronto && !('errore' in pronto));
+  const erroreFile = $derived(pronto && 'errore' in pronto ? pronto.errore : '');
+
+  async function condividi() {
+    messaggio = errore = '';
+    if (!dati.modello) return (errore = 'Carica prima il modello del foglio ore nelle impostazioni.');
+    const p = pronto;
+    if (!p || 'errore' in p) return (errore = p?.errore ?? 'Nessun turno da inserire.');
+    lavoro = true;
+    const r = await condividiFile(p.file);
+    lavoro = false;
+    if (r.esito === 'condiviso') messaggio = 'Foglio ore condiviso.';
+    else if (r.esito === 'non-supportato') {
+      errore = `Non riesco ad aprire il menu Condividi (${r.motivo}). Usa «Scarica»: poi lo condividi dall'app File o dall'anteprima.`;
     }
   }
+
+  function scarica() {
+    messaggio = errore = '';
+    if (!dati.modello) return (errore = 'Carica prima il modello del foglio ore nelle impostazioni.');
+    const p = pronto;
+    if (!p || 'errore' in p) return (errore = p?.errore ?? 'Nessun turno da inserire.');
+    scaricaFile(p.bytes, p.nomeFile);
+    messaggio = `Scaricato: ${p.nomeFile}`;
+  }
+
   const giornoSett = (d: number) => GG[new Date(ym.year, ym.month - 1, d).getDay()];
   const isoGiorno = (d: number) => `${ym.year}-${String(ym.month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
   const giornoPerNuovo = $derived(oggi.getFullYear() === ym.year && oggi.getMonth() + 1 === ym.month ? oggi.getDate() : 1);
@@ -93,13 +113,13 @@
     <a class="tr add" href={`#/turno/nuovo?tipo=sost&data=${isoGiorno(giornoPerNuovo)}`}><Icona nome="piu" /> Aggiungi sostituzione</a>
   </div>
 
-  {#if errore}<p class="msg err" role="alert">{errore}</p>{/if}
+  {#if errore || erroreFile}<p class="msg err" role="alert">{errore || erroreFile}</p>{/if}
   {#if messaggio}<p class="msg ok" role="status">{messaggio}</p>{/if}
 
   <div class="azioni">
     <div class="row">
-      <button class="btn btn-accent grow" disabled={lavoro || !voci.length} onclick={() => genera('condividi')}><Icona nome="condividi" /> Condividi foglio ore</button>
-      <button class="btn btn-secondary" disabled={lavoro || !voci.length} onclick={() => genera('scarica')}>Scarica</button>
+      <button class="btn btn-accent grow" disabled={lavoro || !fileOk} onclick={condividi}><Icona nome="condividi" /> Condividi foglio ore</button>
+      <button class="btn btn-secondary" disabled={lavoro || !fileOk} onclick={scarica}>Scarica</button>
     </div>
     <p class="muted small nomargin">Dal tuo modello: ore in colonna Q, note in colonna R, colonne O–P e cella Q45 lasciate vuote.</p>
   </div>
