@@ -56,9 +56,18 @@ a { color: var(--cloro); }
 
 .inp {
   height: 46px; width: 100%; border: 1px solid #d8d2c5; border-radius: 12px;
-  background: var(--surface); padding: 0 14px; font-size: 15px;
+  /* 16px: sotto questa taglia Safari su iPhone ingrandisce la pagina quando si tocca il campo */
+  background: var(--surface); padding: 0 14px; font-size: 16px;
 }
-.inp:focus-visible, .btn:focus-visible { outline: 3px solid var(--cloro-soft); outline-offset: 1px; }
+
+/* Focus da tastiera: un solo anello per tutto ciò che si tocca.
+   cloro è 5,3:1 su carta e 6,0:1 su surface (serve almeno 3:1). */
+:focus-visible { outline: 2px solid var(--cloro); outline-offset: 2px; }
+.inp:focus-visible { outline-offset: 1px; }
+/* Pulsanti che nascondono un <input type="file"> trasparente: l'anello va sul pulsante */
+label:has(> input[type='file']:focus-visible) { outline: 2px solid var(--cloro); outline-offset: 2px; }
+/* Dentro un contenitore che taglia ciò che sborda, l'anello va all'interno */
+.focus-inset:focus-visible { outline-offset: -2px; }
 
 .tag { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
 .t-maschile { background: var(--area-m-bg); color: var(--area-m-fg); }
