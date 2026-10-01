@@ -134,7 +134,7 @@
       {#if nomiColleghi.length}
         <div class="chips">
           {#each nomiColleghi as n (n)}
-            <button class="chip tap44" aria-pressed={normalizzaNome(n) === normalizzaNome(sostituisce)} onclick={() => scegliCollega(n)}>{n}</button>
+            <button class="chip" aria-pressed={normalizzaNome(n) === normalizzaNome(sostituisce)} onclick={() => scegliCollega(n)}>{n}</button>
           {/each}
         </div>
       {/if}
@@ -179,27 +179,22 @@
   <div class="azioni">
     <button class="btn btn-primary" onclick={salva}>{nuovo ? (sost ? 'Salva sostituzione' : 'Salva turno') : 'Salva modifiche'}</button>
     {#if esistente?.origine === 'manuale'}
-      <button class="btn danger" onclick={elimina}>{confermaElimina ? 'Tocca di nuovo per eliminare' : 'Elimina'}</button>
+      <button class="btn btn-danger" onclick={elimina}>{confermaElimina ? 'Tocca di nuovo per eliminare' : 'Elimina'}</button>
     {/if}
   </div>
 </section>
 
 <style>
   .bar { display: grid; grid-template-columns: 80px 1fr 80px; align-items: center; min-height: 44px; }
-  h1 { margin: 0; text-align: center; font-size: 16px; font-weight: 700; }
-  .nomargin { margin: 0; }
-  .riga-switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; font-size: 15px; font-weight: 500; cursor: pointer; }
-  .chips { display: flex; flex-wrap: wrap; gap: 8px; } /* 36px + 8px: le aree da 44px delle righe si toccano senza sovrapporsi */
-  .chip { min-height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: #fff; font-size: 13px; font-weight: 500; cursor: pointer; }
-  .chip[aria-pressed='true'] { background: var(--ink); border-color: var(--ink); color: #fff; }
-  .hint { display: flex; gap: 8px; align-items: flex-start; background: var(--cloro-soft); color: #1d3a40; border-radius: 12px; padding: 10px 12px; font-size: 13px; line-height: 1.4; }
+  h1 { margin: 0; text-align: center; font-size: var(--text-lg); font-weight: 700; }
+  .riga-switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; font-size: var(--text-base); font-weight: 500; cursor: pointer; }
+  .hint { display: flex; gap: 8px; align-items: flex-start; background: var(--cloro-soft); color: var(--cloro-ink); border-radius: 12px; padding: 10px 12px; font-size: var(--text-sm); line-height: 1.4; }
   .hint :global(.ic) { width: 18px; height: 18px; margin-top: 1px; }
   .aree { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-  .aree button { font-size: 12px; }
+  .aree button { font-size: var(--text-xs); }
   .orari { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-  .sub { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
-  .durata { display: flex; justify-content: space-between; font-size: 13px; }
+  .sub { display: flex; flex-direction: column; gap: 4px; font-size: var(--text-xs); color: var(--muted); }
+  .durata { display: flex; justify-content: space-between; font-size: var(--text-sm); }
   .durata .m { font-weight: 600; }
   .azioni { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
-  .danger { background: transparent; color: var(--danger); border: 1px solid #e8c4c0; }
 </style>

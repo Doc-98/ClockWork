@@ -50,7 +50,7 @@
     {#if confermaScollega}
       <div class="scollega">
         <button class="btn btn-secondary" onclick={() => { gcal.scollega(false); confermaScollega = false; }}>Scollega e tieni il calendario</button>
-        <button class="btn danger" onclick={() => { gcal.scollega(true); confermaScollega = false; }}>Scollega ed elimina il calendario</button>
+        <button class="btn btn-danger" onclick={() => { gcal.scollega(true); confermaScollega = false; }}>Scollega ed elimina il calendario</button>
       </div>
     {/if}
   {:else}
@@ -76,10 +76,7 @@
   p { margin: 4px 0 0; }
   .stato { display: flex; align-items: center; gap: 8px; font-weight: 600; margin-top: 6px; }
   .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
-  .row { display: flex; gap: 8px; }
-  .grow { flex: 1; }
   .scollega { display: flex; flex-direction: column; gap: 8px; }
-  .danger { background: transparent; color: var(--danger); border: 1px solid #e8c4c0; }
   .sep { height: 1px; background: var(--line-soft); margin: 4px 0; }
   .m { word-break: break-all; }
 </style>

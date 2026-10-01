@@ -28,7 +28,7 @@
   const nSost = $derived(attivi.filter((t) => t.sostituisce).length);
 
   const COLORI: Record<Area, string> = {
-    maschile: 'var(--area-m)', femminile: 'var(--area-f)', piccoli: 'var(--area-p)', atrio: 'var(--area-a)', altro: '#6f7c83',
+    maschile: 'var(--area-m)', femminile: 'var(--area-f)', piccoli: 'var(--area-p)', atrio: 'var(--area-a)', altro: 'var(--area-x)',
   };
 
   const celle = $derived.by(() => {
@@ -135,32 +135,32 @@
 <style>
   .head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
   .titolo { text-align: center; min-width: 0; }
-  h1 { margin: 0; font-size: 24px; font-weight: 800; }
+  h1 { margin: 0; font-size: var(--text-3xl); font-weight: 800; }
   .cal { padding: 12px; }
   .grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
   .wd { padding-bottom: 6px; text-align: center; }
-  .wd .lbl { font-size: 11px; }
+  .wd .lbl { font-size: var(--text-2xs); }
   .cella { height: 50px; border: none; background: none; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; color: var(--ink); padding: 0; }
   .cella.oggi .num { color: var(--cloro); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
-  .cella.sel { background: var(--ink); color: #fff; }
-  .cella.sel .num { color: #fff; }
-  .num { font-size: 15px; font-weight: 500; }
+  .cella.sel { background: var(--ink); color: var(--on-ink); }
+  .cella.sel .num { color: var(--on-ink); }
+  .num { font-size: var(--text-base); font-weight: 500; }
   .punti { display: flex; gap: 3px; height: 8px; align-items: center; }
   .punto { width: 7px; height: 7px; border-radius: 50%; background: var(--c); }
   .punto.ring { background: transparent; border: 2px solid var(--c); width: 8px; height: 8px; box-sizing: border-box; }
   /* Atrio: quadratino invece del pallino. Il suo viola e il blu del maschile si confondono
      (ΔE 16, 3 con protanopia): la forma li distingue anche senza colore. */
   .punto.quadro { border-radius: 2px; }
-  .sel .punto { outline: 1.5px solid #fff; }
-  .legenda { display: flex; flex-wrap: wrap; gap: 6px 12px; padding: 10px 4px 2px; font-size: 12px; color: var(--muted); }
+  .sel .punto { outline: 1.5px solid var(--on-ink); }
+  .legenda { display: flex; flex-wrap: wrap; gap: 6px 12px; padding: 10px 4px 2px; font-size: var(--text-xs); color: var(--muted); }
   .legenda span { display: inline-flex; align-items: center; gap: 6px; }
   .legenda i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); display: inline-block; }
   .legenda i.quadro { border-radius: 2px; }
   .legenda i.ring { background: transparent; border: 2px solid var(--c); width: 9px; height: 9px; box-sizing: border-box; }
   .giorno-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: -6px; }
-  h2 { margin: 0; font-size: 17px; }
+  h2 { margin: 0; font-size: var(--text-xl); }
   .nessuno { margin: 0; }
-  .aggiungi { border: 1.5px dashed #b9b2a3; background: transparent; color: var(--ink); text-decoration: none; }
+  .aggiungi { border: 1.5px dashed var(--line-dashed); background: transparent; color: var(--ink); text-decoration: none; }
   .ultimo { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
   .ultimo .link { white-space: nowrap; }
 </style>

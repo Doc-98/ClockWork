@@ -126,8 +126,4 @@
   .box { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
   .file { font-weight: 600; margin-top: 4px; word-break: break-word; }
   p { margin: 4px 0 0; }
-  .upload { position: relative; overflow: hidden; }
-  .upload input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-  .row { display: flex; gap: 8px; }
-  .grow { flex: 1; }
 </style>

@@ -16,7 +16,7 @@
 {/if}
 
 <style>
-  .banner { display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 12px; border-radius: 14px; background: var(--cloro-soft); color: #1d3a40; font-size: 13px; line-height: 1.3; min-height: 52px; }
+  .banner { display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 12px; border-radius: 14px; background: var(--cloro-soft); color: var(--cloro-ink); font-size: var(--text-sm); line-height: 1.3; min-height: 52px; }
   .banner span { flex-grow: 1; }
-  .btn { height: 36px; padding: 0 14px; font-size: 13px; }
+  .btn { height: 36px; padding: 0 14px; font-size: var(--text-sm); }
 </style>

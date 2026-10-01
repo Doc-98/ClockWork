@@ -115,7 +115,7 @@
         <div class="muted small">Scegli il file «Assistenti Spogliatoio» ricevuto dalla società.</div>
       {/if}
     </div>
-    <label class="btn {file ? 'btn-secondary' : 'btn-primary'} scegli">
+    <label class="btn {file ? 'btn-secondary' : 'btn-primary'} upload scegli">
       {file ? 'Cambia' : 'Scegli'}
       <input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onchange={scegliFile} />
     </label>
@@ -126,7 +126,7 @@
   {#if letto && mesiConDati.length}
     <div class="chips" role="group" aria-label="Mese">
       {#each mesiConDati as m (m.nome)}
-        <button class="chip tap44" class:vuoto={!m.miei.length} aria-pressed={m.nome === mese?.nome} onclick={() => scegliMese(m.nome)}>
+        <button class="chip" class:vuoto={!m.miei.length} aria-pressed={m.nome === mese?.nome} onclick={() => scegliMese(m.nome)}>
           {breveMese(m.nome)}{m.miei.length ? '' : ' · —'}
         </button>
       {/each}
@@ -228,21 +228,18 @@
   .file { display: flex; align-items: center; gap: 12px; padding: 12px 14px; }
   .file-ic { width: 40px; height: 40px; border-radius: 10px; background: var(--cloro-soft); color: var(--cloro); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .file-txt { flex-grow: 1; min-width: 0; }
-  .nome { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nome { font-size: var(--text-md); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .inline { color: var(--cloro); font-weight: 600; }
-  .scegli { position: relative; overflow: hidden; height: 44px; padding: 0 14px; font-size: 14px; }
-  .scegli input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-  .chips { display: flex; gap: 8px; overflow-x: auto; margin: 0 -20px; padding: 4px 20px; scrollbar-width: none; }
-  .chip { height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: #fff; color: var(--ink); font-size: 13px; font-weight: 600; white-space: nowrap; cursor: pointer; flex-shrink: 0; }
-  .chip.vuoto { border-style: dashed; color: var(--muted); background: transparent; font-weight: 500; }
-  .chip[aria-pressed='true'] { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .scegli { height: 44px; padding: 0 14px; font-size: var(--text-md); }
+  .chips { flex-wrap: nowrap; overflow-x: auto; margin: 0 -20px; padding: 4px 20px; scrollbar-width: none; }
+  .chip { flex-shrink: 0; }
   .riepilogo { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; background: var(--cloro-soft); border-radius: 14px; padding: 12px 14px; }
-  .n { font-size: 20px; font-weight: 800; }
+  .n { font-size: var(--text-2xl); font-weight: 800; }
   .tags { display: flex; gap: 6px; flex-wrap: wrap; }
-  .tags .tag { background: #fff; }
+  .tags .tag { background: var(--surface); }
   .tags .t-warn { background: var(--warn-bg); }
-  .doppio { padding: 14px; display: flex; flex-direction: column; gap: 10px; border-color: #e4c79b; }
-  .doppio-tit { font-weight: 700; font-size: 15px; }
+  .doppio { padding: 14px; display: flex; flex-direction: column; gap: 10px; border-color: var(--warn-line); }
+  .doppio-tit { font-weight: 700; font-size: var(--text-base); }
   .doppio-row { display: grid; grid-template-columns: 52px 1fr; align-items: center; gap: 8px; }
   .lista { overflow: hidden; }
   .riga { display: flex; align-items: center; gap: 10px; padding: 8px 14px; min-height: 52px; border-top: 1px solid var(--line-soft); cursor: pointer; }
@@ -251,10 +248,9 @@
   .riga input { width: 20px; height: 20px; accent-color: var(--cloro); margin: 0; flex-shrink: 0; }
   .riga-main { flex-grow: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
   .riga-top { display: flex; align-items: center; gap: 8px; }
-  .gg { width: 48px; font-size: 13px; font-weight: 600; flex-shrink: 0; }
-  .ora { margin-left: auto; font-size: 13px; }
-  .nota-riga { font-size: 12px; color: var(--warn); padding-left: 56px; }
-  .ore { width: 36px; text-align: right; font-size: 13px; color: var(--muted); }
+  .gg { width: 48px; font-size: var(--text-sm); font-weight: 600; flex-shrink: 0; }
+  .ora { margin-left: auto; font-size: var(--text-sm); }
+  .nota-riga { font-size: var(--text-xs); color: var(--warn); padding-left: 56px; }
+  .ore { width: 36px; text-align: right; font-size: var(--text-sm); color: var(--muted); }
   .azioni { display: flex; flex-direction: column; gap: 10px; }
-  .nomargin { margin: 0; }
 </style>
