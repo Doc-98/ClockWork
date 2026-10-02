@@ -1,4 +1,4 @@
-import { get, set, del } from 'idb-keyval';
+import { get, set } from 'idb-keyval';
 import type { VoceGiorno } from './foglio/genera';
 
 /**
@@ -7,6 +7,7 @@ import type { VoceGiorno } from './foglio/genera';
  * Più avanti qui arriveranno i turni importati e le sostituzioni.
  */
 
+/** Modello caricato a mano fino alla 0.7: oggi serve solo a recuperare il nome scritto in E5 */
 export interface ModelloSalvato {
   nomeFile: string;
   bytes: Uint8Array;
@@ -20,13 +21,6 @@ export async function leggiModello(): Promise<ModelloSalvato | undefined> {
   return get<ModelloSalvato>(K_MODELLO);
 }
 
-export async function salvaModello(m: ModelloSalvato): Promise<void> {
-  await set(K_MODELLO, m);
-}
-
-export async function cancellaModello(): Promise<void> {
-  await del(K_MODELLO);
-}
 
 export async function leggiVoci(year: number, month: number): Promise<VoceGiorno[]> {
   return (await get<VoceGiorno[]>(kMese(year, month))) ?? [];

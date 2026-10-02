@@ -9,9 +9,9 @@
     <Icona nome="tabella" />
     <span>{avviso.testo}</span>
     {#if avviso.tipo === 'rivedi' && avviso.mese}
-      <a class="btn btn-accent tap44" href={`#/importa?mese=${encodeURIComponent(avviso.mese)}`}>Rivedi</a>
+      <a class="btn btn-accent tap44" href={`#/rivedi?mese=${encodeURIComponent(avviso.mese)}`}>Rivedi</a>
     {:else if avviso.tipo === 'errore'}
-      <a class="btn btn-secondary tap44" href="#/importa">Apri</a>
+      <a class="btn btn-secondary tap44" href="#/foglio-turni">Apri</a>
     {/if}
     <button class="icon-btn plain chiudi" aria-label="Chiudi avviso" onclick={() => fonte.chiudiAvviso()}><Icona nome="chiudi" /></button>
   </div>

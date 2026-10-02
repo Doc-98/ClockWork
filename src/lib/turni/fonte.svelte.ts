@@ -28,6 +28,8 @@ export interface StatoFonte {
   ultimoControllo?: string;
   ultimoEsito?: string;
   avviso?: Avviso;
+  /** Ultime novità applicate da sole, per mese del foglio (es. «Ottobre 26» → «2 orari cambiati») */
+  novita?: Record<string, string>;
 }
 
 class Fonte {
@@ -56,7 +58,7 @@ class Fonte {
     else await del(K);
   }
 
-  /** Collega il link e scarica il foglio: la prima importazione la confermi tu in Importa. */
+  /** Collega il link e scarica il foglio. Subito dopo, controlla() applica i turni che non hanno dubbi. */
   async collega(link: string): Promise<{ nomeFile: string; bytes: Uint8Array }> {
     const rif = rifDaLink(link);
     if (!rif) throw new FoglioNonRaggiungibile('Questo non sembra un link di Google Sheets.', true);
@@ -110,8 +112,11 @@ class Fonte {
       // Il file aggiornato serve anche a Importa e alle sostituzioni (chi era in turno quel giorno)
       await dati.setUltimaImportazione({ nomeFile: s.nome, bytes, quando: new Date().toISOString() });
       const avviso = avvisoDa(piano, manuale);
+      const novita = { ...s.novita };
+      for (const m of applicati) novita[m.nome] = parti(m).join(', ');
       await this.salva({
         ...s,
+        novita,
         ultimoControllo: new Date().toISOString(),
         ultimoEsito: applicati.length ? riassunto(applicati) : piano.some((x) => x.azione === 'rivedi') ? 'Novità da rivedere' : 'Nessuna novità',
         avviso: avviso ?? (manuale ? undefined : s.avviso),
@@ -131,13 +136,12 @@ class Fonte {
 
 const nomeMese = (m: Pick<AggiornamentoMese, 'month'>) => MESI[m.month - 1];
 
+function parti(m: AggiornamentoMese): string[] {
+  return [m.nuovi ? `${m.nuovi} ${m.nuovi === 1 ? 'turno aggiunto' : 'turni aggiunti'}` : '', m.cambiati ? `${m.cambiati} ${m.cambiati === 1 ? 'orario cambiato' : 'orari cambiati'}` : ''].filter(Boolean);
+}
+
 function riassunto(applicati: AggiornamentoMese[]): string {
-  return applicati
-    .map((m) => {
-      const parti = [m.nuovi ? `${m.nuovi} ${m.nuovi === 1 ? 'turno aggiunto' : 'turni aggiunti'}` : '', m.cambiati ? `${m.cambiati} ${m.cambiati === 1 ? 'orario cambiato' : 'orari cambiati'}` : ''].filter(Boolean);
-      return `${nomeMese(m)}: ${parti.join(', ')}`;
-    })
-    .join(' · ');
+  return applicati.map((m) => `${nomeMese(m)}: ${parti(m).join(', ')}`).join(' · ');
 }
 
 export function avvisoDa(piano: AggiornamentoMese[], manuale: boolean): Avviso | undefined {

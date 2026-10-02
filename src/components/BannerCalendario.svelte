@@ -16,7 +16,7 @@
 {/if}
 
 <style>
-  .banner { display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 12px; border-radius: 14px; background: var(--cloro-soft); color: var(--cloro-ink); font-size: var(--text-sm); line-height: 1.3; min-height: 52px; }
+  .banner { display: flex; align-items: center; gap: var(--space-10); padding: var(--space-8) var(--space-8) var(--space-8) var(--space-12); border-radius: var(--radius-lg); background: var(--cloro-soft); color: var(--cloro-ink); font-size: var(--text-sm); line-height: 1.3; min-height: 52px; }
   .banner span { flex-grow: 1; }
-  .btn { height: 36px; padding: 0 14px; font-size: var(--text-sm); }
+  .btn { height: 36px; padding: 0 var(--space-14); font-size: var(--text-sm); }
 </style>

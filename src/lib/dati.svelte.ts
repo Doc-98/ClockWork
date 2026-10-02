@@ -1,7 +1,9 @@
 import { get, set } from 'idb-keyval';
 import { IMPOSTAZIONI_DEFAULT, completaImpostazioni, ordinaTurni, type Impostazioni, type Turno } from './model';
 import type { ScelteOrari } from './turni/importa';
-import { leggiModello, type ModelloSalvato } from './store';
+import { leggiModello } from './store';
+import { caricaModello } from './foglio/modello';
+import { nomeCollaboratore } from './foglio/genera';
 
 /**
  * Stato dell'app, condiviso tra le schermate e salvato sul telefono (IndexedDB).
@@ -28,7 +30,9 @@ class Dati {
   turni = $state<Turno[]>([]);
   impostazioni = $state<Impostazioni>({ ...IMPOSTAZIONI_DEFAULT });
   scelte = $state<ScelteOrari>({});
-  modello = $state<ModelloSalvato | undefined>();
+  /** Il modello del foglio ore, che viaggia con l'app */
+  modello = $state<Uint8Array | undefined>();
+  erroreModello = $state('');
   ultimaImportazione = $state<UltimaImportazione | undefined>();
   /** Turni del foglio che hai tolto in importazione (chiave data|area): gli aggiornamenti automatici non li rimettono */
   esclusi = $state<string[]>([]);
@@ -43,18 +47,25 @@ class Dati {
   }
 
   async carica() {
-    const [turni, imp, scelte, modello, ultima, esclusi] = await Promise.all([
+    const [turni, imp, scelte, ultima, esclusi] = await Promise.all([
       get<Turno[]>(K.turni),
       get<Impostazioni>(K.impostazioni),
       get<ScelteOrari>(K.scelte),
-      leggiModello(),
       get<UltimaImportazione>(K.import),
       get<string[]>(K.esclusi),
     ]);
     this.turni = (turni ?? []).sort(ordinaTurni);
     this.impostazioni = completaImpostazioni(imp);
     this.scelte = scelte ?? {};
-    this.modello = modello;
+    // Fino alla 0.7 il modello lo caricava ognuno, con il suo nome in E5: da lì prendo nome e cognome
+    if (!this.impostazioni.nome.trim()) {
+      const vecchio = await leggiModello().catch(() => undefined);
+      const nome = vecchio ? nomeCollaboratore(vecchio.bytes) : undefined;
+      if (nome) await this.setImpostazioni({ ...this.impostazioni, nome });
+    }
+    caricaModello()
+      .then((m) => (this.modello = m))
+      .catch(() => (this.erroreModello = 'Non riesco a caricare il modello del foglio ore: riprova con la connessione attiva.'));
     this.ultimaImportazione = ultima;
     this.esclusi = esclusi ?? [];
     this.pronto = true;

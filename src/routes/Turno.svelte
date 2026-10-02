@@ -2,7 +2,7 @@
   import { untrack } from 'svelte';
   import { dati } from '../lib/dati.svelte';
   import { router, type Rotta } from '../lib/router.svelte';
-  import { AREE, daHHMM, type Promemoria, hhmm, isoDa, notaSostituzione, nuovoId, nomeArea, breveArea, oreDi, type Area, type Turno } from '../lib/model';
+  import { AREE, daHHMM, type Promemoria, hhmm, isoDa, notaSostituzione, nuovoId, nomeArea, breveArea, oreDi, segnaModifica, type Area, type Turno } from '../lib/model';
   import { turniDelGiornoDalFile } from '../lib/turni/importa';
   import { normalizzaNome } from '../lib/turni/parse';
   import { formatOre, oreInParole } from '../lib/ore';
@@ -26,7 +26,8 @@
   let sost = $state(esistente ? !!esistente.sostituisce : r.tipo === 'sost');
   let sostituisce = $state(esistente?.sostituisce ?? '');
   let nota = $state(esistente?.nota ?? '');
-  let notaToccata = $state(!!esistente?.nota);
+  // La nota automatica vale solo per i turni nuovi: quella di un turno salvato non cambia da sola
+  let notaToccata = $state(!!esistente);
   let annullato = $state(!!esistente?.annullato);
   let nomeTurno = $state(esistente?.nome ?? '');
   let promemoriaPropri = $state(!!esistente?.promemoria);
@@ -86,12 +87,24 @@
 
   const titolo = nuovo ? (r.tipo === 'sost' ? 'Nuova sostituzione' : 'Nuovo turno') : esistente!.origine === 'import' ? 'Turno dal foglio' : esistente!.sostituisce ? 'Sostituzione' : 'Turno';
 
+  // «Salva» si accende solo quando c'è qualcosa da salvare (e di valido)
+  const statoForm = () => JSON.stringify({ data, area, postazione, inizio, fine, sost, sostituisce: sostituisce.trim(), nota: nota.trim(), annullato, nomeTurno: nomeTurno.trim(), promemoriaPropri, promemoria });
+  const iniziale = statoForm();
+  const cambiato = $derived(statoForm() !== iniziale);
+  const valido = $derived(!!data && ore !== null && (!sost || !!sostituisce.trim()));
+  const salvabile = $derived(valido && (nuovo || cambiato));
+  const erroreOrario = $derived(minIni !== null && minFin !== null && minFin <= minIni ? 'La fine deve essere dopo l’inizio.' : '');
+
+  // Nota, nome e promemoria stanno in «Altro»: aperto se il turno ne ha già
+  let altro = $state(!!(esistente?.nome || esistente?.promemoria || (esistente?.nota && !esistente.sostituisce)));
+  const riassuntoAltro = $derived(
+    [nota.trim() ? `Nota: ${nota.trim()}` : '', nomeTurno.trim() ? `Nome: ${nomeTurno.trim()}` : '', promemoriaPropri ? 'promemoria suoi' : `promemoria: ${testoEreditati}`, annullato ? 'annullato' : '']
+      .filter(Boolean).join(' · '),
+  );
+
   function salva() {
     errore = '';
-    if (!data) return (errore = 'Scegli il giorno.');
-    if (minIni === null || minFin === null) return (errore = 'Inserisci inizio e fine.');
-    if (minFin <= minIni) return (errore = 'La fine deve essere dopo l’inizio.');
-    if (sost && !sostituisce.trim()) return (errore = 'Scrivi chi hai sostituito.');
+    if (!salvabile || minIni === null || minFin === null) return;
     const base: Turno = esistente ? { ...$state.snapshot(esistente) } : { id: nuovoId(), data, area, inizio: minIni, fine: minFin, origine: 'manuale' };
     const t: Turno = {
       ...base,
@@ -106,11 +119,7 @@
       nome: nomeTurno.trim() || undefined,
       promemoria: promemoriaPropri ? $state.snapshot(promemoria) : undefined,
     };
-    if (esistente?.origine === 'import') {
-      const cambiato = t.data !== esistente.data || t.area !== esistente.area || t.inizio !== esistente.inizio || t.fine !== esistente.fine || !!t.annullato !== !!esistente.annullato || t.sostituisce !== esistente.sostituisce;
-      if (cambiato) t.modificato = true;
-    }
-    dati.salvaTurno(t);
+    dati.salvaTurno(esistente ? segnaModifica($state.snapshot(esistente) as Turno, t) : t);
     router.indietro(`#/mese/${data.slice(0, 7)}?g=${data}`);
   }
 
@@ -129,13 +138,20 @@
   <header class="bar">
     <button class="link" onclick={() => router.indietro('#/mese')}>Annulla</button>
     <h1>{titolo}</h1>
-    <span></span>
+    <button class="link" disabled={!salvabile} onclick={salva}>Salva</button>
   </header>
 
   {#if esistente?.origine === 'import'}
     <p class="muted small nomargin">
-      Viene dal foglio turni. Se lo modifichi o lo annulli, le prossime importazioni lo lasceranno com'è.
+      Viene dal foglio turni. Se lo modifichi o lo annulli, gli aggiornamenti dal foglio lo lasceranno com'è.
     </p>
+  {/if}
+
+  {#if nuovo || esistente?.origine === 'manuale'}
+    <div class="seg tipo" role="group" aria-label="Tipo">
+      <button aria-pressed={!sost} onclick={() => (sost = false)}>Turno</button>
+      <button aria-pressed={sost} onclick={() => (sost = true)}>Sostituzione</button>
+    </div>
   {/if}
 
   <label class="field">
@@ -143,17 +159,9 @@
     <input class="inp" type="date" bind:value={data} />
   </label>
 
-  {#if nuovo || esistente?.origine === 'manuale'}
-    <label class="riga-switch">
-      <span>È una sostituzione</span>
-      <button class="switch" role="switch" aria-checked={sost} aria-label="È una sostituzione" onclick={() => (sost = !sost)}><span></span></button>
-    </label>
-  {/if}
-
   {#if sost}
     <div class="field">
       <label class="lbl" for="chi">Chi sostituisci</label>
-      <input id="chi" class="inp" bind:value={sostituisce} placeholder="Nome del collega" oninput={() => (suggerimento = '')} />
       {#if nomiColleghi.length}
         <div class="chips">
           {#each nomiColleghi as n (n)}
@@ -161,6 +169,7 @@
           {/each}
         </div>
       {/if}
+      <input id="chi" class="inp" bind:value={sostituisce} placeholder={nomiColleghi.length ? 'Oppure scrivi il nome' : 'Nome del collega'} oninput={() => (suggerimento = '')} />
       {#if suggerimento}
         <div class="hint"><Icona nome="check" /><span>{suggerimento}</span></div>
       {/if}
@@ -178,64 +187,65 @@
 
   <div class="field">
     <span class="lbl">Orario</span>
-    <div class="orari">
-      <label class="sub">Inizio<input class="inp m" type="time" bind:value={inizio} /></label>
-      <label class="sub">Fine<input class="inp m" type="time" bind:value={fine} /></label>
+    <div class="due">
+      <input class="inp m" type="time" bind:value={inizio} aria-label="Inizio" />
+      <input class="inp m" type="time" bind:value={fine} aria-label="Fine" />
     </div>
     <div class="durata"><span class="muted">Nel foglio ore</span><span class="m">{ore !== null ? (Number.isInteger(ore) ? `${formatOre(ore)} h` : `${formatOre(ore)} h · ${oreInParole(ore)}`) : '—'}</span></div>
+    {#if erroreOrario}<p class="msg err">{erroreOrario}</p>{/if}
   </div>
 
-  <label class="field">
-    <span class="lbl">Nota nel foglio ore (colonna R)</span>
-    <input class="inp" bind:value={nota} oninput={() => (notaToccata = true)} placeholder={sost ? 'es. sost greta spogl piccoli' : 'facoltativa'} />
-  </label>
-
-  <div class="field">
-    <label class="lbl" for="nome-turno">Nome del turno (facoltativo)</label>
-    <input id="nome-turno" class="inp" bind:value={nomeTurno} placeholder={titoloAuto} />
-    <p class="muted small nomargin">Lo vedi nell'app{gcal.collegato ? ' e come titolo su Google Calendar' : ' e come titolo nel calendario'}. Vuoto: «{titoloAuto}».</p>
-  </div>
-
-  <div class="field">
-    <label class="riga-switch">
-      <span>Promemoria solo per questo turno</span>
-      <button class="switch" role="switch" aria-checked={promemoriaPropri} aria-label="Promemoria solo per questo turno" onclick={attivaPromemoria}><span></span></button>
-    </label>
-    {#if promemoriaPropri}
-      <EditorPromemoria bind:valore={promemoria} etichetta="Promemoria di questo turno" />
-    {:else}
-      <p class="muted small nomargin">Come gli altri: {testoEreditati}.</p>
+  <div class="card voci">
+    <button class="voce" aria-expanded={altro} onclick={() => (altro = !altro)}>
+      <span class="voce-txt">
+        <span class="voce-nome"><b>Altro</b></span>
+        {#if !altro}<span class="voce-val"><span>{riassuntoAltro}</span></span>{/if}
+      </span>
+      <Icona nome="giu" class="chev" />
+    </button>
+    {#if altro}
+      <div class="voce-corpo">
+        <label class="field">
+          <span class="lbl">Nota nel foglio ore (colonna R)</span>
+          <input class="inp" bind:value={nota} oninput={() => (notaToccata = true)} placeholder={sost ? 'es. sost greta spogl piccoli' : 'facoltativa'} />
+        </label>
+        <div class="field">
+          <label class="lbl" for="nome-turno">Nome del turno</label>
+          <input id="nome-turno" class="inp" bind:value={nomeTurno} placeholder={titoloAuto} />
+          <p class="muted small nomargin">Lo vedi nell'app{gcal.collegato ? ' e come titolo su Google Calendar' : ' e come titolo nel calendario'}. Vuoto: «{titoloAuto}».</p>
+        </div>
+        <div class="field">
+          <label class="riga-switch">
+            <span>Promemoria solo per questo turno</span>
+            <button class="switch" role="switch" aria-checked={promemoriaPropri} aria-label="Promemoria solo per questo turno" onclick={attivaPromemoria}><span></span></button>
+          </label>
+          {#if promemoriaPropri}
+            <EditorPromemoria bind:valore={promemoria} etichetta="Promemoria di questo turno" />
+          {:else}
+            <p class="muted small nomargin">Come gli altri: {testoEreditati}.</p>
+          {/if}
+        </div>
+        {#if esistente}
+          <label class="riga-switch">
+            <span>Annullato, non conta nelle ore</span>
+            <button class="switch" role="switch" aria-checked={annullato} aria-label="Annullato" onclick={() => (annullato = !annullato)}><span></span></button>
+          </label>
+        {/if}
+      </div>
     {/if}
   </div>
-
-  {#if esistente}
-    <label class="riga-switch">
-      <span>Annullato (non conta nelle ore)</span>
-      <button class="switch" role="switch" aria-checked={annullato} aria-label="Annullato" onclick={() => (annullato = !annullato)}><span></span></button>
-    </label>
-  {/if}
 
   {#if errore}<p class="msg err" role="alert">{errore}</p>{/if}
 
-  <div class="azioni">
-    <button class="btn btn-primary" onclick={salva}>{nuovo ? (sost ? 'Salva sostituzione' : 'Salva turno') : 'Salva modifiche'}</button>
-    {#if esistente?.origine === 'manuale'}
-      <button class="btn btn-danger" onclick={elimina}>{confermaElimina ? 'Tocca di nuovo per eliminare' : 'Elimina'}</button>
-    {/if}
-  </div>
+  {#if esistente?.origine === 'manuale'}
+    <button class="btn btn-danger" onclick={elimina}>{confermaElimina ? 'Tocca di nuovo per eliminare' : 'Elimina'}</button>
+  {/if}
 </section>
 
 <style>
-  .bar { display: grid; grid-template-columns: 80px 1fr 80px; align-items: center; min-height: 44px; }
-  h1 { margin: 0; text-align: center; font-size: var(--text-lg); font-weight: 700; }
-  .riga-switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; font-size: var(--text-base); font-weight: 500; cursor: pointer; }
-  .hint { display: flex; gap: 8px; align-items: flex-start; background: var(--cloro-soft); color: var(--cloro-ink); border-radius: 12px; padding: 10px 12px; font-size: var(--text-sm); line-height: 1.4; }
-  .hint :global(.ic) { width: 18px; height: 18px; margin-top: 1px; }
+  .tipo { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .aree { grid-template-columns: repeat(5, minmax(0, 1fr)); }
   .aree button { font-size: var(--text-xs); }
-  .orari { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-  .sub { display: flex; flex-direction: column; gap: 4px; font-size: var(--text-xs); color: var(--muted); }
   .durata { display: flex; justify-content: space-between; font-size: var(--text-sm); }
   .durata .m { font-weight: 600; }
-  .azioni { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
 </style>

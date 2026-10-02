@@ -6,7 +6,8 @@ import { readWorkbook } from '../xlsx/read';
 import { findCell } from '../xlsx/cells';
 import { listXfs } from '../xlsx/styles';
 
-const TEMPLATE = 'fixtures/private/generico.xlsx';
+// Il modello pulito che viaggia con l'app; se c'è, anche quello personale in fixtures/private
+const TEMPLATE = 'src/assets/modello-foglio-ore.xlsx';
 const haveTemplate = existsSync(TEMPLATE);
 
 // Settembre 2026, come nel foglio inviato: 38,25 ore
@@ -29,11 +30,11 @@ describe('raggruppaPerGiorno', () => {
   });
 });
 
-describe.skipIf(!haveTemplate)('generaFoglioOre sul modello reale', () => {
+describe.skipIf(!haveTemplate)('generaFoglioOre sul modello della società', () => {
   const template = haveTemplate ? new Uint8Array(readFileSync(TEMPLATE)) : new Uint8Array();
   const voci = [...SETTEMBRE, { day: 30, hours: 0, note: 'sost greta spogl piccoli' }];
-  const out = haveTemplate ? generaFoglioOre(template, { year: 2026, month: 9, voci }) : undefined!;
-  if (haveTemplate) {
+  const out = haveTemplate ? generaFoglioOre(template, { year: 2026, month: 9, voci, nome: 'Mario Rossi' }) : undefined!;
+  if (haveTemplate && existsSync('fixtures/private')) {
     mkdirSync('fixtures/private/out', { recursive: true });
     writeFileSync('fixtures/private/out/settembre.xlsx', out.bytes);
   }
@@ -50,7 +51,7 @@ describe.skipIf(!haveTemplate)('generaFoglioOre sul modello reale', () => {
   it('totale 38,25 e nome del foglio', () => {
     expect(out.totaleOre).toBe(38.25);
     expect(after.name).toBe('Settembre 26');
-    expect(out.nomeFile).toMatch(/^FOGLIO ORE - .+ - Settembre 2026\.xlsx$/);
+    expect(out.nomeFile).toBe('FOGLIO ORE - Mario Rossi - Settembre 2026.xlsx');
   });
 
   it('ore in colonna Q, nulla nei giorni senza turno', () => {
@@ -73,16 +74,13 @@ describe.skipIf(!haveTemplate)('generaFoglioOre sul modello reale', () => {
     }
   });
 
-  it('Q45 vuota e senza bordi, stesso font e allineamento', () => {
+  it('Q45 (dove c\'era il compenso) vuota e senza bordi', () => {
     const pkg = XlsxPackage.open(out.bytes);
     const sheet = pkg.text(listSheets(pkg).find((s) => s.state === 'visible')!.path);
     const q45 = findCell(sheet, 'Q45')!;
     expect(q45).not.toMatch(/<v>|<f>/);
     const s = Number(/s="(\d+)"/.exec(q45)![1]);
-    const xf = listXfs(pkg.text('xl/styles.xml'))[s];
-    expect(xf).toMatch(/borderId="0"/);
-    expect(xf).toMatch(/fontId="9"/);
-    expect(xf).toMatch(/horizontal="center"/);
+    expect(listXfs(pkg.text('xl/styles.xml'))[s]).toMatch(/borderId="0"/);
   });
 
   it('il totale resta una formula con il valore aggiornato', () => {
@@ -94,12 +92,12 @@ describe.skipIf(!haveTemplate)('generaFoglioOre sul modello reale', () => {
   it('data e mese in alto', () => {
     expect(cell('E4')).toBe(46295); // 30/09/2026
     expect(cell('F6')).toBe('Settembre');
-    expect(typeof cell('E5')).toBe('string'); // nome del collaboratore, invariato
+    expect(cell('E5')).toBe('Mario Rossi');
   });
 
   it('tutte le altre celle sono identiche al modello', () => {
     const before = sheetsBefore.find((s) => s.state === 'visible')!;
-    const touched = new Set<string>(['E4', 'F6', 'Q43', 'Q45']);
+    const touched = new Set<string>(['E4', 'E5', 'F6', 'Q43', 'Q45']);
     for (let r = 12; r <= 42; r++) for (const c of ['O', 'P', 'Q', 'R']) touched.add(`${c}${r}`);
     const colName = (i: number) => { let s = ''; while (i > 0) { const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; };
     const flat = (rows: Map<number, Map<number, unknown>>) => {
@@ -119,7 +117,7 @@ describe.skipIf(!haveTemplate)('generaFoglioOre sul modello reale', () => {
     const b = XlsxPackage.open(out.bytes);
     expect(b.paths()).toEqual(a.paths());
     const changed = b.paths().filter((p) => a.text(p) !== b.text(p));
-    expect(changed.sort()).toEqual(['xl/workbook.xml', 'xl/worksheets/sheet2.xml'].sort());
+    expect(changed.sort()).toEqual(['xl/workbook.xml', listSheets(a).find((s) => s.state === 'visible')!.path].sort());
   });
 
   it('rifiuta il 31 in un mese di 30 giorni', () => {

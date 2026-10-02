@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
-import { confronta, applicaImport, casiDoppi, applicaScelte, leggiFileTurni, chiaveDoppio, chiaveTurno, pianoAggiornamento } from './importa';
+import { confronta, applicaImport, applicaRevisione, casiDoppi, applicaScelte, leggiFileTurni, chiaveDoppio, chiaveTurno, pianoAggiornamento } from './importa';
 import type { TurnoLetto } from './parse';
 import type { Turno } from '../model';
 import { vociDaTurni } from '../foglio/daTurni';
@@ -88,6 +88,45 @@ describe('foglio ore dai turni', () => {
       turno('2026-11-02', 'atrio', 930, 1155),
     ], 2026, 10);
     expect(voci).toEqual([{ day: 2, hours: 9, note: 'sost simone atrio' }]);
+  });
+});
+
+describe('applicaRevisione', () => {
+  const prima = [
+    turno('2026-11-05', 'maschile', 990, 1200, { origine: 'import', id: 'a' }),
+    turno('2026-11-12', 'maschile', 990, 1200, { origine: 'import', id: 'b' }),
+    turno('2026-11-30', 'atrio', 930, 1200, { origine: 'import', id: 'c' }),
+    turno('2026-11-07', 'piccoli', 540, 780, { origine: 'manuale', id: 's', sostituisce: 'Greta' }),
+  ];
+  const foglio = [
+    letto('2026-11-05', 'maschile', 1005, 1200),
+    letto('2026-11-12', 'maschile', 1020, 1200),
+    letto('2026-11-19', 'maschile', 990, 1200),
+  ];
+  const nessuna = { escludi: new Set<string>(), tieniVecchio: new Set<string>(), tieni: new Set<string>() };
+
+  it('accettando tutto: orari nuovi, turno tolto via, nuovo aggiunto, sostituzione intatta', () => {
+    const r = applicaRevisione(prima, foglio, 2026, 11, nessuna);
+    expect(r.find((t) => t.id === 'a')?.inizio).toBe(1005);
+    expect(r.find((t) => t.id === 'c')).toBeUndefined();
+    expect(r.some((t) => t.data === '2026-11-19')).toBe(true);
+    expect(r.find((t) => t.id === 's')).toEqual(prima[3]);
+  });
+
+  it('orario vecchio tenuto e turno tolto tenuto: restano e diventano «modificati»', () => {
+    const r = applicaRevisione(prima, foglio, 2026, 11, {
+      escludi: new Set(['2026-11-19|maschile']),
+      tieniVecchio: new Set(['2026-11-12|maschile']),
+      tieni: new Set(['2026-11-30|atrio']),
+    });
+    expect(r.find((t) => t.id === 'b')).toMatchObject({ inizio: 990, modificato: true });
+    expect(r.find((t) => t.id === 'c')).toMatchObject({ modificato: true });
+    expect(r.some((t) => t.data === '2026-11-19')).toBe(false);
+    // un aggiornamento successivo non li tocca più
+    const c = confronta(r, foglio, 2026, 11);
+    expect(c.protetti.map((t) => t.id)).toEqual(['b']);
+    expect(c.rimossi).toEqual([]);
+    expect(applicaImport(r, foglio, 2026, 11).find((t) => t.id === 'c')).toBeDefined();
   });
 });
 
