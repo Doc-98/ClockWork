@@ -6,7 +6,8 @@
 export type Rotta =
   | { nome: 'oggi' }
   | { nome: 'mese'; ym?: string; giorno?: string }
-  | { nome: 'importa'; mese?: string }
+  | { nome: 'foglio-turni' }
+  | { nome: 'rivedi'; mese?: string }
   | { nome: 'foglio'; ym?: string }
   | { nome: 'turno'; id?: string; data?: string; tipo?: 'sost' }
   | { nome: 'impostazioni' }
@@ -20,8 +21,12 @@ function leggi(): Rotta {
   switch (a) {
     case 'mese':
       return { nome: 'mese', ym: b, giorno: q.get('g') ?? undefined };
+    case 'foglio-turni':
+    // «Importa» non c'è più: i vecchi link portano alle impostazioni del foglio turni
     case 'importa':
-      return { nome: 'importa', mese: q.get('mese') ?? undefined };
+      return q.get('mese') ? { nome: 'rivedi', mese: q.get('mese')! } : { nome: 'foglio-turni' };
+    case 'rivedi':
+      return { nome: 'rivedi', mese: q.get('mese') ?? undefined };
     case 'foglio':
       return { nome: 'foglio', ym: b };
     case 'turno':

@@ -38,7 +38,8 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        // xlsx: il modello del foglio ore, serve anche offline
+        globPatterns: ['**/*.{js,css,html,svg,png,woff2,xlsx}'],
         navigateFallback: 'index.html',
         // la pagina di ritorno dal login Google non deve essere sostituita dall'app
         navigateFallbackDenylist: [/oauth\.html/],

@@ -234,3 +234,26 @@ export function pianoAggiornamento(
   }
   return out;
 }
+
+/** Cosa hai deciso rivedendo un mese: chiavi data|area dei turni */
+export interface Revisione {
+  /** Turni nuovi del foglio che non vuoi importare */
+  escludi: Set<string>;
+  /** Turni con l'orario cambiato nel foglio per cui tieni quello vecchio */
+  tieniVecchio: Set<string>;
+  /** Turni spariti dal foglio che vuoi tenere */
+  tieni: Set<string>;
+}
+
+/**
+ * Applica la revisione di un mese. I turni che tieni come sono (orario vecchio o spariti dal foglio)
+ * diventano «modificati»: da lì in poi gli aggiornamenti dal foglio non li toccano.
+ */
+export function applicaRevisione(esistenti: Turno[], letti: TurnoLetto[], year: number, month: number, r: Revisione): Turno[] {
+  const daProteggere = new Set([...r.tieniVecchio, ...r.tieni]);
+  const marcati = esistenti.map((t) =>
+    t.origine === 'import' && inMese(t.data, year, month) && daProteggere.has(chiaveTurno(t)) ? { ...t, modificato: true } : t,
+  );
+  const confermati = letti.filter((l) => !r.escludi.has(chiaveTurno(l)) && !r.tieniVecchio.has(chiaveTurno(l)));
+  return applicaImport(marcati, confermati, year, month);
+}

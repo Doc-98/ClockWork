@@ -1,13 +1,14 @@
 <script lang="ts">
   import Icona from './Icona.svelte';
   import { router } from '../lib/router.svelte';
-  const voci = [
+  import { vista } from '../lib/vista.svelte';
+
+  const voci = $derived([
     { id: 'oggi', href: '#/', label: 'Oggi' },
-    { id: 'mese', href: '#/mese', label: 'Mese' },
-    { id: 'importa', href: '#/importa', label: 'Importa' },
-    { id: 'foglio', href: '#/foglio', label: 'Foglio ore' },
-  ];
-  const attiva = $derived(router.rotta.nome === 'turno' ? 'mese' : router.rotta.nome);
+    { id: 'mese', href: vista.href('mese'), label: 'Mese' },
+    { id: 'foglio', href: vista.href('foglio'), label: 'Foglio ore' },
+  ]);
+  const attiva = $derived(router.rotta.nome);
 </script>
 
 <nav aria-label="Sezioni">
@@ -22,7 +23,7 @@
 <style>
   nav {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
-    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
     padding-bottom: var(--safe-bottom);
     background: var(--surface); border-top: 1px solid var(--line);
   }

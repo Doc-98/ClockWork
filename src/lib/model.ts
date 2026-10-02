@@ -89,15 +89,19 @@ export interface Turno {
 }
 
 export interface Impostazioni {
+  /** Nome e cognome, scritto in testa al foglio ore (E5) */
+  nome: string;
   /** Come compari nel foglio turni, es. ["Vincenzo"] */
   alias: string[];
+  /** Le schede Mese e Foglio ore mostrano lo stesso mese */
+  meseLegato: boolean;
   /** €/h, solo per te */
   tariffa: number;
   aree: Partial<Record<Area, PersonalizzazioneArea>>;
   calendario: ImpostazioniCalendario;
 }
 
-export const IMPOSTAZIONI_DEFAULT: Impostazioni = { alias: [], tariffa: 9, aree: {}, calendario: CALENDARIO_DEFAULT };
+export const IMPOSTAZIONI_DEFAULT: Impostazioni = { nome: '', alias: [], meseLegato: true, tariffa: 9, aree: {}, calendario: CALENDARIO_DEFAULT };
 
 /** Completa impostazioni salvate da versioni precedenti (o da un backup) con i valori predefiniti. */
 export function completaImpostazioni(imp?: Partial<Impostazioni>): Impostazioni {
@@ -151,6 +155,18 @@ export function notaSostituzione(nome: string, area: Area): string {
     altro: '',
   };
   return ['sost', nome.trim().toLowerCase(), dove[area]].filter(Boolean).join(' ');
+}
+
+/**
+ * Un turno del foglio che hai cambiato (orario, giorno, area, annullato, sostituzione):
+ * da qui in poi gli aggiornamenti dal foglio lo lasciano com'è.
+ */
+export function segnaModifica(prima: Turno, dopo: Turno): Turno {
+  if (prima.origine !== 'import') return dopo;
+  const cambiato =
+    dopo.data !== prima.data || dopo.area !== prima.area || dopo.inizio !== prima.inizio || dopo.fine !== prima.fine ||
+    !!dopo.annullato !== !!prima.annullato || dopo.sostituisce !== prima.sostituisce;
+  return cambiato ? { ...dopo, modificato: true } : dopo;
 }
 
 export function ordinaTurni(a: Turno, b: Turno): number {

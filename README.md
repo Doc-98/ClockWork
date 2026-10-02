@@ -3,6 +3,20 @@
 PWA per organizzare i turni di lavoro e compilare il foglio ore mensile.
 Funziona offline e si installa su iPhone e Android dal browser, senza store.
 
+## Versione 0.8
+
+- **Nuova disposizione**: tre schede (Oggi, Mese, Foglio ore). Oggi è il cruscotto: turno di oggi,
+  «Ho coperto» e «Turno extra», ore, turni e stima del mese, prossimi turni.
+- **Mese e Foglio ore**: tocchi il nome del mese per sceglierne un altro da una griglia; «Oggi» riporta
+  al mese corrente. Le due schede mostrano lo stesso mese (si può disattivare nelle impostazioni).
+  In Mese, toccando un turno si apre una modifica veloce di orario, nota e «annullato».
+- **Impostazioni** a gruppi; **Impostazioni foglio turni** prende il posto di Importa: collegamento,
+  stato dei mesi, nome di ricerca, file caricato a mano. **Rivedi** mostra solo ciò che va deciso
+  (orari doppi, orari cambiati, turni spariti dal foglio).
+- **Modello del foglio ore incluso nell'app** (`src/assets/modello-foglio-ore.xlsx`): non si carica più;
+  l'app scrive nome e cognome (E5), mese, data e ore. Al primo avvio si chiedono solo il nome e il foglio turni.
+- **Salva e Conferma** restano spenti finché non c'è una modifica da salvare.
+
 ## Versione 0.7
 
 - **Foglio turni collegato**: in Importa incolli una volta il link del foglio Google (condiviso con
@@ -57,7 +71,8 @@ Funziona offline e si installa su iPhone e Android dal browser, senza store.
 
 Il file .xlsx è un archivio zip di file XML. L'app non lo riscrive con una libreria: apre il modello,
 modifica solo le celle necessarie e lo richiude. Tutto il resto (formattazione, bordi, formule,
-fogli nascosti, logo) resta identico byte per byte. Vedi `src/lib/foglio/genera.ts`.
+fogli nascosti, logo) resta identico byte per byte. Il modello è quello pulito della società,
+senza dati personali. Vedi `src/lib/foglio/genera.ts`.
 
 ## Sviluppo
 

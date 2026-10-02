@@ -36,9 +36,8 @@
   }
 </script>
 
-<div class="card box">
+<div class="box">
   <div>
-    <div class="lbl">Google Calendar</div>
     {#if gcal.collegato}
       <p class="stato"><span class="dot"></span>Collegato al calendario «{NOME_CALENDARIO}»</p>
       <p class="muted small">
@@ -107,7 +106,7 @@
 </div>
 
 <style>
-  .box { padding: var(--space-16); display: flex; flex-direction: column; gap: var(--space-12); }
+  .box { display: flex; flex-direction: column; gap: var(--space-12); }
   p { margin: var(--space-4) 0 0; }
   .stato { display: flex; align-items: center; gap: var(--space-8); font-weight: 600; margin-top: var(--space-6); }
   .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }

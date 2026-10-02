@@ -7,11 +7,13 @@
   import { router } from './lib/router.svelte';
   import { chiediArchivioPersistente } from './lib/store';
   import { swipe, animaIngresso } from './lib/swipe';
+  import { vista } from './lib/vista.svelte';
   import Nav from './components/Nav.svelte';
   import Benvenuto from './routes/Benvenuto.svelte';
   import Oggi from './routes/Oggi.svelte';
   import Mese from './routes/Mese.svelte';
-  import Importa from './routes/Importa.svelte';
+  import FoglioTurni from './routes/FoglioTurni.svelte';
+  import Rivedi from './routes/Rivedi.svelte';
   import TurnoView from './routes/Turno.svelte';
   import FoglioOre from './routes/FoglioOre.svelte';
   import Impostazioni from './routes/Impostazioni.svelte';
@@ -38,10 +40,9 @@
 
   // Schede principali, nell'ordine della barra in basso
   const SCHEDE = [
-    { nome: 'oggi', href: '#/' },
-    { nome: 'mese', href: '#/mese' },
-    { nome: 'importa', href: '#/importa' },
-    { nome: 'foglio', href: '#/foglio' },
+    { nome: 'oggi', href: () => '#/' },
+    { nome: 'mese', href: () => vista.href('mese') },
+    { nome: 'foglio', href: () => vista.href('foglio') },
   ] as const;
   const indiceScheda = (nome: string) => SCHEDE.findIndex((s) => s.nome === nome);
 
@@ -59,13 +60,13 @@
     const i = indiceScheda(router.rotta.nome);
     const dest = SCHEDE[i + direzione];
     if (i < 0 || !dest) return false;
-    router.vai(dest.href, true);
+    router.vai(dest.href(), true);
     return true;
   }
 
-  const configurato = $derived(!!dati.modello && dati.impostazioni.alias.length > 0);
-  // Le schermate con «Salva» non hanno la barra: si esce solo salvando o annullando
-  const conNav = $derived(configurato && router.rotta.nome !== 'turno' && router.rotta.nome !== 'personalizza');
+  const configurato = $derived(dati.impostazioni.alias.length > 0 && !!dati.impostazioni.nome.trim());
+  // La barra in basso c'è solo nelle tre schede: dalle altre pagine si esce con Indietro, Annulla o Salva
+  const conNav = $derived(configurato && indiceScheda(router.rotta.nome) >= 0);
 </script>
 
 {#if aggiornamento}
@@ -88,9 +89,11 @@
     <Oggi />
   {:else if router.rotta.nome === 'mese'}
     <Mese rotta={router.rotta} />
-  {:else if router.rotta.nome === 'importa'}
+  {:else if router.rotta.nome === 'foglio-turni'}
+    <FoglioTurni />
+  {:else if router.rotta.nome === 'rivedi'}
     {#key router.rotta}
-      <Importa rotta={router.rotta} />
+      <Rivedi rotta={router.rotta} />
     {/key}
   {:else if router.rotta.nome === 'turno'}
     {#key router.rotta}

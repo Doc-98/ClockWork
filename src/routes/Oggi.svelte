@@ -55,12 +55,14 @@
 </script>
 
 <section class="page">
-  <header class="head">
-    <div>
-      <div class="muted data">{GIORNI[ora.getDay()]} {ora.getDate()} {MESI[ora.getMonth()].toLowerCase()}</div>
-      <h1 class="page-title">Ciao, {dati.impostazioni.alias[0]}</h1>
+  <header class="hdr">
+    <div class="hdr-txt">
+      <span class="hdr-sopra">{GIORNI[ora.getDay()]} {ora.getDate()} {MESI[ora.getMonth()].toLowerCase()}</span>
+      <h1>Ciao, {dati.impostazioni.alias[0]}</h1>
     </div>
-    <a class="icon-btn" href="#/impostazioni" aria-label="Impostazioni"><Icona nome="impostazioni" /></a>
+    <div class="hdr-azioni">
+      <a class="icon-btn" href="#/impostazioni" aria-label="Impostazioni"><Icona nome="impostazioni" /></a>
+    </div>
   </header>
 
   <BannerTurni />
@@ -85,40 +87,35 @@
         {principale.sostituisce ? `Sostituzione di ${principale.sostituisce} · ` : ''}{principale.nome?.trim() ? `${principale.nome.trim()} · ` : ''}{nomeArea(principale.area, dati.impostazioni)}{principale.postazione ? ` · Postazione ${principale.postazione}` : ''}{principale.presa ? ' · presa' : ''}
       </div>
       {#if stato === 'in-corso'}
-        <div class="bar"><div style="width: {Math.round(progresso * 100)}%"></div></div>
+        <div class="avanzamento scuro"><div style="width: {Math.round(progresso * 100)}%"></div></div>
       {/if}
       <div class="hero-foot m">{formatOre(oreDi(principale))} h</div>
     </a>
   {:else}
-    <div class="card empty">
+    <div class="card vuoto">
       <p>Nessun turno in arrivo.</p>
-      <a class="btn btn-primary" href="#/importa"><Icona nome="importa" /> Importa il foglio turni</a>
+      <a class="link" href="#/foglio-turni">Collega o aggiorna il foglio turni</a>
     </div>
   {/if}
 
-  <a class="btn cover" href={`#/turno/nuovo?tipo=sost&data=${oggiIso}`}><Icona nome="scambio" /> Ho coperto un turno</a>
+  <div class="azioni">
+    <a class="btn coperto" href={`#/turno/nuovo?tipo=sost&data=${oggiIso}`}><Icona nome="scambio" /> Ho coperto</a>
+    <a class="btn btn-secondary" href={`#/turno/nuovo?data=${oggiIso}`}><Icona nome="piu" /> Turno extra</a>
+  </div>
 
-  <a class="card mese" href="#/foglio">
-    <div class="mese-top">
-      <div>
-        <div class="lbl">{MESI[month - 1]} {year}</div>
-        <div class="big"><span class="d">{formatOre(oreFatte)}</span> <span class="muted">di {formatOre(oreMese)} h</span></div>
-      </div>
-      <div class="right">
-        <div class="lbl">Compenso stimato</div>
-        <div class="m euro">{formatEuro(oreMese * dati.impostazioni.tariffa)}</div>
-      </div>
+  <section class="card mese" aria-label="{MESI[month - 1]}">
+    <span class="lbl">{MESI[month - 1]}</span>
+    <div class="stats">
+      <div class="stat"><span class="v d">{formatOre(oreFatte)}<span class="u"> / {formatOre(oreMese)} h</span></span><span class="u">ore fatte</span></div>
+      <div class="stat"><span class="v d">{delMese.length}</span><span class="u">{delMese.length === 1 ? 'turno' : 'turni'}{sost ? ` · ${sost} sost.` : ''}</span></div>
+      <div class="stat"><span class="v m">{formatEuro(oreMese * dati.impostazioni.tariffa).replace(',00', '')}</span><span class="u">stima</span></div>
     </div>
-    <div class="bar light"><div style="width: {oreMese ? Math.round((oreFatte / oreMese) * 100) : 0}%"></div></div>
-    <div class="mese-foot">
-      <span class="muted small">{delMese.length} turni{sost ? ` · ${sost} ${sost === 1 ? 'sostituzione' : 'sostituzioni'}` : ''}</span>
-      <span class="link small">Foglio ore →</span>
-    </div>
-  </a>
+    <div class="avanzamento"><div style="width: {oreMese ? Math.round((oreFatte / oreMese) * 100) : 0}%"></div></div>
+  </section>
 
   {#if prossimi.length}
     <div class="lista">
-      <div class="lista-head"><h2 class="lbl">Poi</h2><a class="link small" href="#/mese">Tutto il mese</a></div>
+      <h2 class="lbl">Prossimi turni</h2>
       {#each prossimi as t (t.id)}
         <RigaTurno turno={t} />
       {/each}
@@ -127,8 +124,6 @@
 </section>
 
 <style>
-  .head { display: flex; justify-content: space-between; align-items: flex-start; }
-  .data { font-size: var(--text-md); font-weight: 500; }
   .hero { display: flex; flex-direction: column; gap: var(--space-6); padding: var(--space-20); border-radius: var(--radius-xl); background: var(--hero); color: var(--on-ink); text-decoration: none; }
   .hero-top { display: flex; justify-content: space-between; align-items: center; gap: var(--space-8); }
   .tag.live { background: var(--on-ink-veil); color: var(--on-ink); }
@@ -137,22 +132,23 @@
   .orario { font-size: var(--text-5xl); font-weight: 600; letter-spacing: -0.02em; margin-top: var(--space-6); }
   .dove { font-size: var(--text-base); color: var(--on-ink-soft); }
   .hero-foot { font-size: var(--text-sm); color: var(--on-ink-muted); margin-top: var(--space-4); }
-  .bar { height: 6px; border-radius: 3px; background: var(--on-ink-track); overflow: hidden; margin-top: var(--space-10); }
-  .bar div { height: 100%; background: var(--mint); border-radius: 3px; }
-  .bar.light { background: var(--line-soft); margin-top: 0; }
-  .bar.light div { background: var(--cloro); }
-  .empty { padding: var(--space-20); display: flex; flex-direction: column; gap: var(--space-12); }
-  .empty p { margin: 0; color: var(--muted); }
-  .cover { border: 1.5px solid var(--cloro); background: var(--surface); color: var(--cloro); text-decoration: none; margin-top: calc(var(--space-4) * -1); }
-  .mese { padding: var(--space-16); display: flex; flex-direction: column; gap: var(--space-12); color: var(--ink); text-decoration: none; }
-  .mese-top { display: flex; justify-content: space-between; align-items: flex-end; gap: var(--space-8); }
-  .big { display: flex; align-items: baseline; gap: var(--space-6); margin-top: var(--space-4); }
-  .big .d { font-size: var(--text-4xl); font-weight: 800; }
-  .right { text-align: right; }
-  .euro { font-size: var(--text-2xl); font-weight: 600; margin-top: var(--space-6); }
-  .mese-foot { display: flex; justify-content: space-between; align-items: center; }
-  .mese-foot .link { min-height: 0; }
+  .avanzamento { height: 6px; border-radius: 3px; background: var(--line-soft); overflow: hidden; }
+  .avanzamento div { height: 100%; border-radius: 3px; background: var(--cloro); }
+  .avanzamento.scuro { background: var(--on-ink-track); margin-top: var(--space-10); }
+  .avanzamento.scuro div { background: var(--mint); }
+  .vuoto { padding: var(--space-16) var(--space-20); display: flex; flex-direction: column; gap: var(--space-4); }
+  .vuoto p { margin: 0; color: var(--muted); }
+  .vuoto .link { align-self: flex-start; }
+  .azioni { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-8); }
+  .azioni .btn { padding: 0 var(--space-12); text-decoration: none; }
+  .coperto { border: 1.5px solid var(--cloro); background: var(--surface); color: var(--cloro); }
+  .mese { padding: var(--space-16); display: flex; flex-direction: column; gap: var(--space-14); }
+  .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .stat { display: flex; flex-direction: column; gap: var(--space-2); padding: 0 var(--space-12); border-left: 1px solid var(--line-soft); min-width: 0; }
+  .stat:first-child { border-left: none; padding-left: 0; }
+  .v { font-size: var(--text-2xl); font-weight: 800; line-height: 1.15; white-space: nowrap; }
+  .v.m { font-weight: 600; }
+  .u { font-size: var(--text-sm); color: var(--muted); font-family: var(--font-body); font-weight: 400; letter-spacing: 0; }
   .lista { display: flex; flex-direction: column; gap: var(--space-8); }
-  .lista-head { display: flex; justify-content: space-between; align-items: center; }
-  .lista-head h2 { margin: 0; }
+  .lista h2 { margin: 0 0 calc(var(--space-2) * -1); }
 </style>

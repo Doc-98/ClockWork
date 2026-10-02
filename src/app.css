@@ -238,3 +238,53 @@ label:has(> input[type='file']:focus-visible) { outline: 2px solid var(--cloro);
 .row { display: flex; gap: var(--space-8); }
 .grow { flex: 1; }
 .nomargin { margin: 0; }
+
+/* Un'azione che non ha ancora niente da fare (Salva senza modifiche, Conferma senza scelte):
+   sbiadita e non toccabile. Vale per pulsanti e link usati come pulsanti. */
+.link:disabled, .link[aria-disabled='true'], .btn[aria-disabled='true'] { opacity: 0.4; pointer-events: none; cursor: default; }
+
+/* Intestazione delle schede principali: titolo grande a sinistra, azioni a destra */
+.hdr { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-12); min-height: 56px; }
+.hdr-txt { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; flex: 1; }
+.hdr-sopra { font-size: var(--text-md); font-weight: 500; color: var(--muted); }
+.hdr h1 { margin: 0; font-family: var(--font-display); font-size: var(--text-3xl); font-weight: 800; line-height: 1.1; letter-spacing: -0.01em; }
+.hdr-azioni { display: flex; gap: var(--space-8); flex-shrink: 0; }
+
+/* Intestazione delle pagine secondarie: Indietro o Annulla · titolo · Salva o versione */
+.bar { display: grid; grid-template-columns: minmax(72px, auto) minmax(0, 1fr) minmax(72px, auto); align-items: center; gap: var(--space-8); min-height: 44px; }
+.bar h1 { margin: 0; text-align: center; font-size: var(--text-lg); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar > :last-child { justify-self: end; }
+.bar .link :where(.ic) { width: 20px; height: 20px; }
+
+/* Elenchi a gruppi (impostazioni) */
+.gruppo { display: flex; flex-direction: column; gap: var(--space-6); }
+.gruppo > h2 { margin: 0; padding-left: var(--space-4); }
+.voci { overflow: hidden; }
+.voce { display: flex; align-items: center; gap: var(--space-12); min-height: 56px; width: 100%; padding: var(--space-8) var(--space-12) var(--space-8) var(--space-14);
+  border: none; border-top: 1px solid var(--line-soft); background: none; color: var(--ink); text-decoration: none; text-align: left; cursor: pointer; }
+.voci > :first-child, .voci > :first-child > .voce { border-top: none; }
+.voce-ico { width: 32px; height: 32px; border-radius: var(--radius-sm); background: var(--cloro-soft); color: var(--cloro); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.voce-ico.warn { background: var(--warn-bg); color: var(--warn); }
+.voce-ico .ic { width: 18px; height: 18px; }
+.voce-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.voce-nome { font-weight: 500; }
+.voce-val { display: flex; align-items: center; gap: var(--space-6); font-size: var(--text-sm); color: var(--muted); min-width: 0; }
+.voce-val > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.voce .chev { color: var(--chevron); width: 18px; height: 18px; transition: transform 0.15s; }
+.voce[aria-expanded='true'] .chev { transform: rotate(180deg); }
+.voce.azione .voce-nome { color: var(--cloro); font-weight: 600; }
+.voce.danger .voce-nome { color: var(--danger); font-weight: 600; }
+.voce-corpo { display: flex; flex-direction: column; gap: var(--space-14); padding: var(--space-4) var(--space-16) var(--space-16); }
+.voce.fissa { cursor: default; }
+
+/* Mese aggiornato: cerchio verde con la spunta, grande quanto il testo */
+.ok-badge { display: inline-flex; align-items: center; justify-content: center; width: 1.15em; height: 1.15em; border-radius: 50%; background: var(--ok); color: #fff; flex-shrink: 0; }
+.ok-badge .ic { width: 0.8em; height: 0.8em; stroke-width: 3.2; }
+/* sul verde chiaro del tema scuro il bianco si leggerebbe poco */
+:root[data-tema='scuro'] .ok-badge { color: var(--hero); }
+
+.riga-switch { display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); min-height: 44px; font-weight: 500; cursor: pointer; }
+.hint { display: flex; gap: var(--space-8); align-items: flex-start; background: var(--cloro-soft); color: var(--cloro-ink); border-radius: var(--radius-md); padding: var(--space-10) var(--space-12); font-size: var(--text-sm); line-height: 1.4; }
+.hint .ic { width: 18px; height: 18px; margin-top: 1px; }
+.due { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-10); }
+.chev { color: var(--chevron); width: 18px; height: 18px; }

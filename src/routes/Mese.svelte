@@ -1,32 +1,27 @@
 <script lang="ts">
   import { dati } from '../lib/dati.svelte';
   import { router, type Rotta } from '../lib/router.svelte';
-  import { isoDa, dataDa, oreDi, breveArea, type Area } from '../lib/model';
-  import { formatOre, formatEuro } from '../lib/ore';
+  import { isoDa, dataDa, breveArea, type Area } from '../lib/model';
   import { MESI } from '../lib/foglio/genera';
-  import RigaTurno from '../components/RigaTurno.svelte';
+  import { vista, ymDa, ymOggi, ymStr, spostaYm, type Ym } from '../lib/vista.svelte';
+  import TitoloMese from '../components/TitoloMese.svelte';
+  import TurnoRapido from '../components/TurnoRapido.svelte';
   import Icona from '../components/Icona.svelte';
-  import BannerCalendario from '../components/BannerCalendario.svelte';
-  import BannerTurni from '../components/BannerTurni.svelte';
 
   let { rotta }: { rotta: Extract<Rotta, { nome: 'mese' }> } = $props();
 
-  const oggi = new Date();
-  const ym = $derived.by(() => {
-    const m = /^(\d{4})-(\d{2})$/.exec(rotta.ym ?? '');
-    return m ? { year: Number(m[1]), month: Number(m[2]) } : { year: oggi.getFullYear(), month: oggi.getMonth() + 1 };
-  });
-  const oggiIso = isoDa(oggi);
+  const oggiIso = isoDa(new Date());
+  const ym = $derived(ymDa(rotta.ym) ?? ymOggi());
+  $effect(() => vista.segna('mese', ym));
+
   const giornoSel = $derived.by(() => {
-    if (rotta.giorno) return rotta.giorno;
-    const primo = `${ym.year}-${String(ym.month).padStart(2, '0')}-01`;
-    return oggiIso.startsWith(primo.slice(0, 8)) ? oggiIso : primo;
+    if (rotta.giorno?.startsWith(ymStr(ym))) return rotta.giorno;
+    return oggiIso.startsWith(ymStr(ym)) ? oggiIso : `${ymStr(ym)}-01`;
   });
 
   const turniMese = $derived(dati.turniDelMese(ym.year, ym.month));
   const attivi = $derived(turniMese.filter((t) => !t.annullato));
-  const oreTot = $derived(Math.round(attivi.reduce((s, t) => s + oreDi(t), 0) * 100) / 100);
-  const nSost = $derived(attivi.filter((t) => t.sostituisce).length);
+  const mesiConTurni = $derived(new Set(dati.turni.map((t) => t.data.slice(0, 7))));
 
   const COLORI: Record<Area, string> = {
     maschile: 'var(--area-m)', femminile: 'var(--area-f)', piccoli: 'var(--area-p)', atrio: 'var(--area-a)', altro: 'var(--area-x)',
@@ -47,12 +42,15 @@
   });
 
   const delGiorno = $derived(turniMese.filter((t) => t.data === giornoSel));
+  let aperto = $state<string | undefined>();
 
-  function cambiaMese(delta: number) {
-    const d = new Date(ym.year, ym.month - 1 + delta, 1);
-    router.vai(`#/mese/${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`, true);
+  function vai(dest: Ym) {
+    aperto = undefined;
+    const sel = dest.year === ymOggi().year && dest.month === ymOggi().month ? `?g=${oggiIso}` : '';
+    router.vai(`#/mese/${ymStr(dest)}${sel}`, true);
   }
   function scegli(iso: string) {
+    aperto = undefined;
     router.vai(`#/mese/${iso.slice(0, 7)}?g=${iso}`, true);
   }
   const GIORNI = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
@@ -63,19 +61,12 @@
 </script>
 
 <section class="page">
-  <header class="head">
-    <button class="icon-btn" aria-label="Mese precedente" onclick={() => cambiaMese(-1)}><Icona nome="sx" /></button>
-    <div class="titolo">
-      <h1 class="d">{MESI[ym.month - 1]} {ym.year}</h1>
-      <div class="m muted small">
-        {formatOre(oreTot)} h{nSost ? ` · ${attivi.length - nSost} da orari + ${nSost} sost.` : ` · ${attivi.length} turni`} · {formatEuro(oreTot * dati.impostazioni.tariffa).replace(',00', '')}
-      </div>
-    </div>
-    <button class="icon-btn" aria-label="Mese successivo" onclick={() => cambiaMese(1)}><Icona nome="dx" /></button>
-  </header>
-
-  <BannerTurni />
-  <BannerCalendario />
+  <TitoloMese {ym} sopra={String(ym.year)} {vai} {mesiConTurni}>
+    {#snippet azioni()}
+      <button class="icon-btn" aria-label="Mese precedente" onclick={() => vai(spostaYm(ym, -1))}><Icona nome="sx" /></button>
+      <button class="icon-btn" aria-label="Mese successivo" onclick={() => vai(spostaYm(ym, 1))}><Icona nome="dx" /></button>
+    {/snippet}
+  </TitoloMese>
 
   <div class="card cal">
     <div class="grid wd">
@@ -89,7 +80,7 @@
             class:sel={c.iso === giornoSel}
             class:oggi={c.iso === oggiIso}
             aria-pressed={c.iso === giornoSel}
-            aria-label={`${c.d}${c.punti.length ? `, ${c.punti.length} turni` : ''}`}
+            aria-label={`${c.d}${c.punti.length ? `, ${c.punti.length} ${c.punti.length === 1 ? 'turno' : 'turni'}` : ''}`}
             onclick={() => scegli(c.iso)}
           >
             <span class="m num">{c.d}</span>
@@ -115,29 +106,17 @@
 
   <div class="giorno-head">
     <h2>{titoloGiorno}</h2>
-    <span class="m muted small">{delGiorno.length ? `${delGiorno.length} ${delGiorno.length === 1 ? 'turno' : 'turni'}` : ''}</span>
+    {#if delGiorno.length > 1}<span class="m muted small">{delGiorno.length} turni</span>{/if}
   </div>
 
   {#each delGiorno as t (t.id)}
-    <RigaTurno turno={t} mostraData={false} />
+    <TurnoRapido turno={t} aperto={aperto === t.id} apri={(a) => (aperto = a ? t.id : undefined)} />
   {:else}
-    <p class="muted small nessuno">Nessun turno.</p>
+    <p class="muted small nessuno">Nessun turno in questo giorno.</p>
   {/each}
-
-  <a class="btn aggiungi" href={`#/turno/nuovo?data=${giornoSel}`}><Icona nome="piu" /> Aggiungi turno o sostituzione</a>
-
-  {#if dati.ultimaImportazione}
-    <div class="ultimo muted small">
-      <span>Importato il {new Date(dati.ultimaImportazione.quando).toLocaleDateString('it-IT')} da «{dati.ultimaImportazione.nomeFile}»</span>
-      <a class="link small" href="#/importa">Aggiorna</a>
-    </div>
-  {/if}
 </section>
 
 <style>
-  .head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-8); }
-  .titolo { text-align: center; min-width: 0; }
-  h1 { margin: 0; font-size: var(--text-3xl); font-weight: 800; }
   .cal { padding: var(--space-12); }
   .grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: var(--space-2); }
   .wd { padding-bottom: var(--space-6); text-align: center; }
@@ -162,7 +141,4 @@
   .giorno-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: calc(var(--space-6) * -1); }
   h2 { margin: 0; font-size: var(--text-xl); }
   .nessuno { margin: 0; }
-  .aggiungi { border: 1.5px dashed var(--line-dashed); background: transparent; color: var(--ink); text-decoration: none; }
-  .ultimo { display: flex; justify-content: space-between; align-items: center; gap: var(--space-12); }
-  .ultimo .link { white-space: nowrap; }
 </style>

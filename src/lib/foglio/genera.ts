@@ -15,6 +15,7 @@ export const LAYOUT = {
   totalCell: 'Q43',
   compensoCell: 'Q45',
   dateCell: 'E4',
+  nameCell: 'E5',
   monthCell: 'F6',
 } as const;
 
@@ -37,6 +38,8 @@ export interface OpzioniFoglio {
   voci: VoceGiorno[];
   /** Data scritta in alto (E4). Default: ultimo giorno del mese. */
   data?: Date;
+  /** Nome e cognome del collaboratore (E5). Se manca resta quello del modello. */
+  nome?: string;
 }
 
 export interface EsitoFoglio {
@@ -83,7 +86,7 @@ function checkTemplate(sheet: string): void {
 /**
  * Compila il foglio ore partendo dal modello originale.
  * Tocca solo: colonna Q (ore), colonna R (note), O–P (svuotate), Q43 (valore del totale),
- * Q45 (svuotata e senza bordi), data E4, mese F6 e nome del foglio visibile.
+ * Q45 (se c'è: svuotata e senza bordi), data E4, nome E5, mese F6 e nome del foglio visibile.
  */
 export function generaFoglioOre(template: Uint8Array, opt: OpzioniFoglio): EsitoFoglio {
   const { year, month } = opt;
@@ -125,19 +128,21 @@ export function generaFoglioOre(template: Uint8Array, opt: OpzioniFoglio): Esito
   // Il totale resta una formula: aggiorno solo il valore mostrato da chi non ricalcola (es. anteprime).
   sheet = setCell(sheet, LAYOUT.totalCell, { content: { kind: 'formulaCache', value: totale } });
 
-  // Q45: via il compenso e via i bordi.
+  // Q45: nei modelli personali c'era il compenso. Via il valore e via i bordi; nel modello pulito non c'è.
   const q45Style = cellStyle(sheet, LAYOUT.compensoCell);
   if (q45Style !== undefined) {
     const styled = borderlessStyle(pkg.text('xl/styles.xml'), q45Style);
     pkg.setText('xl/styles.xml', styled.styles);
     sheet = setCell(sheet, LAYOUT.compensoCell, { content: { kind: 'empty' }, style: styled.index });
-  } else {
+  } else if (findCell(sheet, LAYOUT.compensoCell)) {
     sheet = setCell(sheet, LAYOUT.compensoCell, { content: { kind: 'empty' } });
   }
 
   const data = opt.data ?? new Date(year, month, 0);
   sheet = setCell(sheet, LAYOUT.dateCell, { content: { kind: 'number', value: dateToSerial(data) } });
   sheet = setCell(sheet, LAYOUT.monthCell, { content: { kind: 'text', value: MESI[month - 1] } });
+  const nomeScritto = opt.nome?.trim();
+  if (nomeScritto) sheet = setCell(sheet, LAYOUT.nameCell, { content: { kind: 'text', value: nomeScritto } });
   pkg.setText(target.path, sheet);
 
   // Nome del foglio visibile ("Ottobre 26") e ricalcolo all'apertura in Excel.
@@ -151,7 +156,7 @@ export function generaFoglioOre(template: Uint8Array, opt: OpzioniFoglio): Esito
   wb = wb.replace(/<calcPr\s*\/>/, '<calcPr fullCalcOnLoad="1"/>').replace(/<calcPr\b(?![^>]*fullCalcOnLoad)([^>]*?)(\/?)>/, '<calcPr$1 fullCalcOnLoad="1"$2>');
   pkg.setText('xl/workbook.xml', wb);
 
-  const nome = nomeCollaboratore(template);
+  const nome = (nomeScritto || nomeCollaboratore(template))?.replace(/[\\/:*?"<>|]/g, '');
   return {
     bytes: pkg.save(),
     totaleOre: totale,
