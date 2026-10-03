@@ -40,6 +40,7 @@
   <div>
     {#if gcal.collegato}
       <p class="stato"><span class="dot"></span>Collegato al calendario «{NOME_CALENDARIO}»</p>
+      {#if gcal.stato.account}<p class="muted small account">Account: {gcal.stato.account} · per cambiarlo, scollega e ricollega</p>{/if}
       <p class="muted small">
         {gcal.stato.ultimaSync ? `Ultima sincronizzazione: ${new Date(gcal.stato.ultimaSync).toLocaleString('it-IT', { dateStyle: 'short', timeStyle: 'short' })} · ${gcal.stato.ultimoEsito ?? ''}` : 'Non ancora sincronizzato.'}
       </p>
@@ -113,6 +114,7 @@
   .scollega { display: flex; flex-direction: column; gap: var(--space-8); }
   .sep { height: 1px; background: var(--line-soft); margin: var(--space-4) 0; }
   .m { word-break: break-all; }
+  .account { overflow-wrap: anywhere; }
   .doppioni { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 12px; background: var(--warn-bg); color: var(--warn); border: 1px solid var(--warn-line); }
   .doppioni .tit { font-weight: 700; margin: 0; }
   .doppioni .small { margin: 0; }

@@ -75,10 +75,13 @@
       });
   });
 
+  /** Il telefono ha rifiutato l'Excel: da qui in poi Condividi manda il PDF */
+  let soloPdf = $state(false);
+
   /** Cosa condivide il pulsante: Excel dove il sistema lo accetta (iPhone/iPad), altrimenti PDF */
   const formatoCondivisione = $derived.by((): 'xlsx' | 'pdf' | 'attesa' | 'nessuno' => {
     if (!pronto || 'errore' in pronto) return 'nessuno';
-    if (pronto.file) return 'xlsx';
+    if (pronto.file && !soloPdf) return 'xlsx';
     if (pdf?.file) return 'pdf';
     if (pdfInCorso) return 'attesa';
     return 'nessuno';
@@ -95,7 +98,13 @@
     lavoro = false;
     if (r.esito === 'condiviso') messaggio = formatoCondivisione === 'pdf' ? 'Foglio ore condiviso in PDF.' : 'Foglio ore condiviso.';
     else if (r.esito === 'non-supportato') {
-      errore = `Non riesco ad aprire il menu Condividi (${r.motivo}). Scaricalo con il pulsante qui accanto: poi lo condividi dall'app File o dall'anteprima.`;
+      if (formatoCondivisione === 'xlsx' && pdf?.file) {
+        // Riprovare subito non si può (serve un nuovo tocco): si prepara il PDF per il prossimo
+        soloPdf = true;
+        errore = 'Questo telefono non accetta il file Excel nel menu Condividi. Tocca di nuovo Condividi: invio il PDF.';
+      } else {
+        errore = `Non riesco ad aprire il menu Condividi: ${r.motivo}. Scaricalo con il pulsante qui accanto e condividilo dall'app File.`;
+      }
     }
   }
 

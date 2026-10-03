@@ -97,7 +97,8 @@ Source: **GitHub Actions**.
 
 1. [console.cloud.google.com](https://console.cloud.google.com): nuovo progetto, abilita **Google Calendar API**.
 2. Google Auth Platform: app esterna, aggiungi il tuo account tra i **test user**, scope `calendar.app.created`
-   e `calendar.calendarlist.readonly` (solo i nomi dei calendari: serve a ritrovare quello di ClockWork invece di crearne un doppione).
+   e `calendar.calendarlist.readonly` (solo i nomi dei calendari: serve a ritrovare quello di ClockWork invece di crearne un doppione)
+   e `userinfo.email` (solo l'indirizzo: ai prossimi accessi Google ripropone lo stesso account senza farlo scegliere).
 3. Client OAuth di tipo **Applicazione web**: origine `https://doc-98.github.io`, URI di reindirizzamento
    `https://doc-98.github.io/ClockWork/oauth.html`.
 4. Nel repository: Settings → Secrets and variables → Actions → **Variables** → `GOOGLE_CLIENT_ID`.

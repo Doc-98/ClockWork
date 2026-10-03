@@ -1,6 +1,6 @@
 import { get, set, del } from 'idb-keyval';
 import { dati } from '../dati.svelte';
-import { richiediToken, puoElencare, type TokenGoogle } from './auth';
+import { richiediToken, puoElencare, emailAccount, SCOPE_EMAIL, type TokenGoogle } from './auth';
 import * as api from './api';
 import { pianoSync, inizioFinestra, type PianoSync } from './eventi';
 
@@ -22,6 +22,8 @@ export interface StatoGcal {
   ultimoEsito?: string;
   /** Calendario lasciato su Google dopo «Scollega e tieni»: ricollegando si riusa questo */
   calendarioPrecedente?: string;
+  /** Account Google usato (email): ai prossimi accessi Google lo ripropone senza far scegliere */
+  account?: string;
 }
 
 export const CLIENT_ID_BUILD: string = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? '';
@@ -67,9 +69,13 @@ class Gcal {
   /** Da chiamare dal tocco dell'utente. */
   async accedi(): Promise<TokenGoogle> {
     if (!this.clientId) throw new Error('Manca il Client ID di Google.');
-    const t = await richiediToken(this.clientId);
+    const t = await richiediToken(this.clientId, { suggerimento: this.stato.account });
     this.token = t;
     await set(K_TOKEN, t);
+    if (t.scope?.split(' ').includes(SCOPE_EMAIL)) {
+      const email = await emailAccount(t.accessToken);
+      if (email && email !== this.stato.account) await this.salvaStato({ ...this.stato, account: email });
+    }
     return t;
   }
 

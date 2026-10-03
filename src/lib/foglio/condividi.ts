@@ -12,12 +12,27 @@ export type EsitoCondivisione =
  */
 export const PDF_MIME = 'application/pdf';
 
+/**
+ * Chrome (Android, Windows, ChromeOS…) accetta nel menu Condividi solo alcuni tipi di file: PDF sì,
+ * Excel no. Ma il suo canShare() risponde «sì» per qualsiasi file e il rifiuto arriva solo dopo,
+ * da share(), come NotAllowedError. Quindi su Chromium non ci si fida di canShare per l'Excel.
+ * Safari (iPhone, iPad, Mac) invece condivide l'Excel senza problemi.
+ */
+export function excelCondivisibile(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const nav = navigator as Navigator & { userAgentData?: unknown };
+  if (nav.userAgentData) return false; // Chromium
+  if (/Android/i.test(navigator.userAgent)) return false;
+  return true;
+}
+
 export function fileCondivisibile(
   bytes: Uint8Array,
   nomeFile: string,
   tipi: string[] = [XLSX_MIME, 'application/octet-stream', ''],
 ): File | undefined {
   if (typeof navigator === 'undefined' || !navigator.canShare) return undefined;
+  if (/\.xlsx$/i.test(nomeFile) && !excelCondivisibile()) return undefined;
   for (const type of tipi) {
     const f = new File([bytes as BlobPart], nomeFile, type ? { type } : {});
     try {
@@ -44,7 +59,8 @@ export async function condividiFile(file: File | undefined): Promise<EsitoCondiv
   } catch (e) {
     if (e instanceof DOMException && e.name === 'AbortError') return { esito: 'annullato' };
     const nome = e instanceof DOMException ? e.name : e instanceof Error ? e.name : 'errore';
-    return { esito: 'non-supportato', motivo: nome === 'NotAllowedError' ? 'il sistema ha bloccato la condivisione' : `errore ${nome}` };
+    const dettaglio = e instanceof Error && e.message ? ` (${e.message})` : '';
+    return { esito: 'non-supportato', motivo: nome === 'NotAllowedError' ? `il sistema ha rifiutato questo file${dettaglio}` : `errore ${nome}${dettaglio}` };
   }
 }
 

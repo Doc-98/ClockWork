@@ -12,7 +12,9 @@ export const SCOPE_CALENDARIO = 'https://www.googleapis.com/auth/calendar.app.cr
  * quando l'app non se lo ricorda (dati cancellati, reinstallazione, altro dispositivo) invece di crearne un doppione.
  */
 export const SCOPE_ELENCO = 'https://www.googleapis.com/auth/calendar.calendarlist.readonly';
-export const SCOPE = `${SCOPE_CALENDARIO} ${SCOPE_ELENCO}`;
+/** Solo l'indirizzo email dell'account: serve a riproporre lo stesso account senza far scegliere ogni volta. */
+export const SCOPE_EMAIL = 'https://www.googleapis.com/auth/userinfo.email';
+export const SCOPE = `${SCOPE_CALENDARIO} ${SCOPE_ELENCO} ${SCOPE_EMAIL}`;
 const CANALE = 'clockwork-oauth';
 
 export interface TokenGoogle {
@@ -45,7 +47,7 @@ function casuale(): string {
  * Va chiamata direttamente dal tocco dell'utente (altrimenti il browser blocca la finestra).
  * `suggerimento`: email dell'account da preselezionare, se nota.
  */
-export function richiediToken(clientId: string, opzioni: { suggerimento?: string; silenzioso?: boolean } = {}): Promise<TokenGoogle> {
+export function richiediToken(clientId: string, opzioni: { suggerimento?: string; sceltaAccount?: boolean } = {}): Promise<TokenGoogle> {
   const state = casuale();
   const params = new URLSearchParams({
     client_id: clientId,
@@ -54,9 +56,11 @@ export function richiediToken(clientId: string, opzioni: { suggerimento?: string
     scope: SCOPE,
     include_granted_scopes: 'true',
     state,
-    prompt: opzioni.silenzioso ? 'none' : 'select_account',
   });
-  if (opzioni.suggerimento) params.set('login_hint', opzioni.suggerimento);
+  // Con l'account già noto Google lo usa direttamente: se il permesso c'è già, la finestra si apre
+  // e si richiude da sola senza chiedere niente. La scelta dell'account solo la prima volta.
+  if (opzioni.suggerimento && !opzioni.sceltaAccount) params.set('login_hint', opzioni.suggerimento);
+  else params.set('prompt', 'select_account');
   const url = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
 
   const win = window.open(url, 'clockwork-google', 'popup,width=480,height=640');
@@ -108,4 +112,16 @@ export function richiediToken(clientId: string, opzioni: { suggerimento?: string
       }
     }, 5 * 60_000);
   });
+}
+
+/** Email dell'account a cui appartiene il token (serve il permesso userinfo.email). */
+export async function emailAccount(accessToken: string): Promise<string | undefined> {
+  try {
+    const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: `Bearer ${accessToken}` } });
+    if (!r.ok) return undefined;
+    const d = (await r.json()) as { email?: string };
+    return d.email || undefined;
+  } catch {
+    return undefined;
+  }
 }
