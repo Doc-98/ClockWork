@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { dati } from '../lib/dati.svelte';
   import { nomeArea, hhmm, oreDi, isoDa, dataDa } from '../lib/model';
-  import { formatOre, formatEuro } from '../lib/ore';
+  import { formatOre } from '../lib/ore';
   import { MESI } from '../lib/foglio/genera';
   import RigaTurno from '../components/RigaTurno.svelte';
   import Icona from '../components/Icona.svelte';
@@ -40,6 +40,15 @@
     Math.round(delMese.filter((t) => t.data < oggiIso || (t.data === oggiIso && t.fine <= minutiOra)).reduce((s, t) => s + oreDi(t), 0) * 100) / 100,
   );
   const sost = $derived(delMese.filter((t) => t.sostituisce).length);
+  // Settimana in corso, da lunedì a domenica (anche a cavallo di due mesi)
+  const settimana = $derived.by(() => {
+    const lun = new Date(ora.getFullYear(), ora.getMonth(), ora.getDate() - ((ora.getDay() + 6) % 7));
+    const dom = new Date(lun.getFullYear(), lun.getMonth(), lun.getDate() + 6);
+    const da = isoDa(lun);
+    const a = isoDa(dom);
+    const ts = attivi.filter((t) => t.data >= da && t.data <= a);
+    return { ore: Math.round(ts.reduce((s, t) => s + oreDi(t), 0) * 100) / 100, turni: ts.length };
+  });
 
   function durata(min: number) {
     const h = Math.floor(min / 60);
@@ -108,7 +117,7 @@
     <div class="stats">
       <div class="stat"><span class="v d">{formatOre(oreFatte)}<span class="u"> / {formatOre(oreMese)} h</span></span><span class="u">ore fatte</span></div>
       <div class="stat"><span class="v d">{delMese.length}</span><span class="u">{delMese.length === 1 ? 'turno' : 'turni'}{sost ? ` · ${sost} sost.` : ''}</span></div>
-      <div class="stat"><span class="v m">{formatEuro(oreMese * dati.impostazioni.tariffa).replace(',00', '')}</span><span class="u">stima</span></div>
+      <div class="stat"><span class="v d">{formatOre(settimana.ore)}<span class="u"> h</span></span><span class="u">settimana</span></div>
     </div>
     <div class="avanzamento"><div style="width: {oreMese ? Math.round((oreFatte / oreMese) * 100) : 0}%"></div></div>
   </section>
@@ -147,7 +156,6 @@
   .stat { display: flex; flex-direction: column; gap: var(--space-2); padding: 0 var(--space-12); border-left: 1px solid var(--line-soft); min-width: 0; }
   .stat:first-child { border-left: none; padding-left: 0; }
   .v { font-size: var(--text-2xl); font-weight: 800; line-height: 1.15; white-space: nowrap; }
-  .v.m { font-weight: 600; }
   .u { font-size: var(--text-sm); color: var(--muted); font-family: var(--font-body); font-weight: 400; letter-spacing: 0; }
   .lista { display: flex; flex-direction: column; gap: var(--space-8); }
   .lista h2 { margin: 0 0 calc(var(--space-2) * -1); }

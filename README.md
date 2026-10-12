@@ -1,12 +1,14 @@
 # ClockWork
 
+**App: [doc-98.github.io/ClockWork](https://doc-98.github.io/ClockWork/)**
+
 PWA per organizzare i turni di lavoro e compilare il foglio ore mensile.
 Funziona offline e si installa su iPhone e Android dal browser, senza store.
 
 ## Versione 0.8
 
 - **Nuova disposizione**: tre schede (Oggi, Mese, Foglio ore). Oggi è il cruscotto: turno di oggi,
-  «Ho coperto» e «Turno extra», ore, turni e stima del mese, prossimi turni.
+  «Ho coperto» e «Turno extra», ore e turni del mese, ore della settimana, prossimi turni.
 - **Mese e Foglio ore**: tocchi il nome del mese per sceglierne un altro da una griglia; «Oggi» riporta
   al mese corrente. Le due schede mostrano lo stesso mese (si può disattivare nelle impostazioni).
   In Mese, toccando un turno si apre una modifica veloce di orario, nota e «annullato».
