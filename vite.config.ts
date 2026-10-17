@@ -42,7 +42,7 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,woff2,xlsx}'],
         navigateFallback: 'index.html',
         // la pagina di ritorno dal login Google non deve essere sostituita dall'app
-        navigateFallbackDenylist: [/oauth\.html/],
+        navigateFallbackDenylist: [/oauth\.html/, /nfc\.html/],
       },
     }),
   ],

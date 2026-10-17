@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Prova NFC</title>
+<style>
+  :root { --carta: #f4f1ea; --ink: #10212b; --muted: #56636b; --line: #e2ddd2; --surface: #fff; --cloro: #0b6e78; --ok: #2f7d4f; --warn: #8a4b05; --warn-bg: #fdf1dc; }
+  @media (prefers-color-scheme: dark) { :root { --carta: #0e1a21; --ink: #e6edf0; --muted: #9eb0ba; --line: #2b3c46; --surface: #16252e; --cloro: #4fbcc6; --ok: #4fc283; --warn: #f2b766; --warn-bg: #3a2a12; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--carta); color: var(--ink); font: 16px/1.45 system-ui, -apple-system, sans-serif; padding: 20px 16px 40px; }
+  main { max-width: 520px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+  h1 { margin: 0; font-size: 26px; }
+  p { margin: 0; }
+  .muted { color: var(--muted); font-size: 14px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+  button { height: 50px; border: none; border-radius: 14px; font: inherit; font-weight: 600; cursor: pointer; background: var(--cloro); color: #fff; }
+  button.sec { background: var(--surface); color: var(--ink); border: 1px solid var(--line); }
+  button:disabled { opacity: .5; }
+  .msg { padding: 10px 12px; border-radius: 12px; background: var(--warn-bg); color: var(--warn); font-size: 14px; }
+  .ok { color: var(--ok); font-weight: 600; }
+  code, pre { font-family: ui-monospace, 'SF Mono', monospace; font-size: 13px; }
+  pre { margin: 0; white-space: pre-wrap; word-break: break-all; }
+  .riga { display: flex; justify-content: space-between; gap: 12px; }
+  .riga b { font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Prova NFC</h1>
+  <p class="muted">Avvicina il bracciale al retro del telefono. La pagina mostra cosa riesce a leggere: il numero seriale del chip e i dati eventualmente salvati dentro. Niente viene inviato da nessuna parte.</p>
+
+  <div class="card" id="supporto"></div>
+
+  <button id="avvia">Avvia lettura</button>
+  <button id="copia" class="sec" disabled>Copia i risultati</button>
+
+  <div id="esito"></div>
+  <div id="letture" style="display:flex;flex-direction:column;gap:10px"></div>
+</main>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const log = [];
+  const supporto = $('supporto');
+  const ok = 'NDEFReader' in window;
+  supporto.innerHTML = `
+    <div class="riga"><span>Web NFC</span><b class="${ok ? 'ok' : ''}">${ok ? 'disponibile' : 'non disponibile'}</b></div>
+    <div class="riga"><span>Pagina sicura (https)</span><b>${window.isSecureContext ? 'sì' : 'no'}</b></div>
+    <div class="riga"><span>Browser</span><b style="text-align:right;font-weight:400" class="muted">${navigator.userAgent.replace(/\) .*/, ')')}</b></div>
+    ${ok ? '' : '<p class="msg">Serve Chrome su Android, con l’NFC acceso. Su iPhone il web non può leggere l’NFC.</p>'}`;
+  if (!ok) $('avvia').disabled = true;
+
+  const esito = (html) => ($('esito').innerHTML = html);
+  const hex = (view) => [...new Uint8Array(view.buffer, view.byteOffset, view.byteLength)].map((b) => b.toString(16).padStart(2, '0')).join(' ');
+
+  function decodifica(r) {
+    const out = { recordType: r.recordType, mediaType: r.mediaType || null, id: r.id || null, encoding: r.encoding || null, lang: r.lang || null };
+    if (r.data) {
+      out.bytes = r.data.byteLength;
+      out.hex = hex(r.data);
+      try { out.testo = new TextDecoder(r.encoding || 'utf-8').decode(r.data); } catch { /* binario */ }
+    }
+    return out;
+  }
+
+  function mostra(voce, i) {
+    const precedente = log.slice(0, i).reverse().find((x) => x.serialNumber);
+    const stesso = precedente && voce.serialNumber ? (precedente.serialNumber === voce.serialNumber ? 'uguale alla lettura precedente' : 'DIVERSO dalla lettura precedente') : '';
+    const div = document.createElement('div');
+    div.className = 'card';
+    div.innerHTML = voce.errore
+      ? `<div class="riga"><b>Lettura ${i + 1}</b><span class="muted">${voce.ora}</span></div><p class="msg">${voce.errore}</p>`
+      : `<div class="riga"><b>Lettura ${i + 1}</b><span class="muted">${voce.ora}</span></div>
+         <div class="riga"><span>Seriale</span><code>${voce.serialNumber || '(non fornito)'}</code></div>
+         ${stesso ? `<p class="muted">${stesso}</p>` : ''}
+         <div class="riga"><span>Record NDEF</span><b>${voce.records.length}</b></div>
+         ${voce.records.length ? `<pre>${JSON.stringify(voce.records, null, 1)}</pre>` : '<p class="muted">Nessun dato salvato nel chip (o formato non standard): si può usare solo il seriale.</p>'}`;
+    $('letture').prepend(div);
+    $('copia').disabled = false;
+  }
+
+  $('avvia').onclick = async () => {
+    try {
+      const reader = new NDEFReader();
+      await reader.scan();
+      $('avvia').disabled = true;
+      $('avvia').textContent = 'In ascolto… avvicina il bracciale';
+      esito('<p class="muted">Lettura attiva. Puoi passare il bracciale più volte: serve a capire se il seriale resta sempre lo stesso.</p>');
+      reader.onreading = (e) => {
+        const voce = { ora: new Date().toLocaleTimeString('it-IT'), serialNumber: e.serialNumber, records: [...(e.message?.records ?? [])].map(decodifica) };
+        log.push(voce);
+        mostra(voce, log.length - 1);
+        if (navigator.vibrate) navigator.vibrate(60);
+      };
+      reader.onreadingerror = () => {
+        const voce = { ora: new Date().toLocaleTimeString('it-IT'), errore: 'Il telefono ha visto un chip ma non è riuscito a leggerlo (formato non supportato, es. MIFARE Classic su alcuni telefoni). Prova a tenerlo fermo più a lungo.' };
+        log.push(voce);
+        mostra(voce, log.length - 1);
+      };
+    } catch (err) {
+      esito(`<p class="msg">Non riesco ad avviare la lettura: ${err.name} — ${err.message}. ${err.name === 'NotAllowedError' ? 'Concedi il permesso NFC al sito, poi riprova.' : ''}</p>`);
+    }
+  };
+
+  $('copia').onclick = async () => {
+    const testo = JSON.stringify({ userAgent: navigator.userAgent, letture: log }, null, 1);
+    try { await navigator.clipboard.writeText(testo); $('copia').textContent = 'Copiato: incollalo in chat'; }
+    catch { esito(`<pre>${testo.replace(/</g, '&lt;')}</pre>`); }
+  };
+</script>
+</body>
+</html>
