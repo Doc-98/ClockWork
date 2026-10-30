@@ -97,11 +97,13 @@ export interface Impostazioni {
   meseLegato: boolean;
   /** €/h, solo per te */
   tariffa: number;
+  /** Mese dello stipendio (1–12) da cui la società toglie i 5 € del casellario; 0 = nessuno */
+  casellario: number;
   aree: Partial<Record<Area, PersonalizzazioneArea>>;
   calendario: ImpostazioniCalendario;
 }
 
-export const IMPOSTAZIONI_DEFAULT: Impostazioni = { nome: '', alias: [], meseLegato: true, tariffa: 9, aree: {}, calendario: CALENDARIO_DEFAULT };
+export const IMPOSTAZIONI_DEFAULT: Impostazioni = { nome: '', alias: [], meseLegato: true, tariffa: 9, casellario: 10, aree: {}, calendario: CALENDARIO_DEFAULT };
 
 /** Completa impostazioni salvate da versioni precedenti (o da un backup) con i valori predefiniti. */
 export function completaImpostazioni(imp?: Partial<Impostazioni>): Impostazioni {

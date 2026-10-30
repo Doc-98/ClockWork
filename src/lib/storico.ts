@@ -128,14 +128,18 @@ export interface MeseStorico {
   /** Ore delle sostituzioni (nell'archivio: dei giorni con nota «sost…») */
   oreSost: number;
   nSost: number;
-  fonte: 'app' | 'archivio' | 'nessuna';
+  /** 'manuale': totale del mese inserito a mano (es. foglio ore perso o sbagliato) */
+  fonte: 'app' | 'manuale' | 'archivio' | 'nessuna';
 }
+
+/** Ore totali inserite a mano per un mese (chiave YYYY-MM): valgono più dell'archivio, meno dei turni dell'app */
+export type OreManuali = Record<string, number>;
 
 const arrotonda = (n: number) => Math.round(n * 100) / 100;
 /** Nell'archivio le sostituzioni sono scritte a mano: «sost …», «sostit …», «sostituzione …» */
 export const eSostituzione = (nota?: string) => /^\s*sost/i.test(nota ?? '');
 
-export function riepilogoMese(ym: string, turni: Turno[], archivio?: Pick<Archivio, 'mesi'>): MeseStorico {
+export function riepilogoMese(ym: string, turni: Turno[], archivio?: Pick<Archivio, 'mesi'>, manuali?: OreManuali): MeseStorico {
   const suoi = turni.filter((t) => !t.annullato && t.data.startsWith(`${ym}-`));
   if (suoi.length) {
     const sost = suoi.filter((t) => t.sostituisce);
@@ -147,6 +151,8 @@ export function riepilogoMese(ym: string, turni: Turno[], archivio?: Pick<Archiv
       fonte: 'app',
     };
   }
+  const aMano = manuali?.[ym];
+  if (aMano !== undefined) return { ym, ore: arrotonda(aMano), oreSost: 0, nSost: 0, fonte: 'manuale' };
   const a = archivio?.mesi.find((m) => m.ym === ym);
   if (a) {
     const sost = a.voci.filter((v) => eSostituzione(v.note));
@@ -203,13 +209,13 @@ export interface AnnoStorico {
  * Le soglie contano i compensi per data di pagamento: nell'anno `anno` entrano i mesi di lavoro
  * da dicembre dell'anno prima a novembre, fino al mese `fino` compreso.
  */
-export function riepilogoAnno(anno: number, fino: string, turni: Turno[], archivio?: Pick<Archivio, 'mesi'>): AnnoStorico {
+export function riepilogoAnno(anno: number, fino: string, turni: Turno[], archivio?: Pick<Archivio, 'mesi'>, manuali?: OreManuali): AnnoStorico {
   const mesi: string[] = [];
   for (let ym = ymChiave(anno - 1, 12); ym <= ymChiave(anno, 11) && ym <= fino; ym = spostaChiave(ym, 1)) mesi.push(ym);
   let ore = 0;
   const mancanti: string[] = [];
   for (const ym of mesi) {
-    const r = riepilogoMese(ym, turni, archivio);
+    const r = riepilogoMese(ym, turni, archivio, manuali);
     ore += r.ore;
     if (r.fonte === 'nessuna') mancanti.push(ym);
   }
@@ -236,17 +242,19 @@ export function minutiScrittiComeDecimali(hours: number): number | undefined {
 
 const firma = (m: MeseArchivio) => m.voci.map((v) => `${v.day}:${v.hours}`).join('|');
 
-export function controlliArchivio(archivio: Pick<Archivio, 'mesi' | 'ignorati'>): Controllo[] {
+export function controlliArchivio(archivio: Pick<Archivio, 'mesi' | 'ignorati'>, manuali: OreManuali = {}): Controllo[] {
   const out: Controllo[] = [];
   for (const m of archivio.mesi) {
     for (const v of m.voci) {
       const proposta = minutiScrittiComeDecimali(v.hours);
-      if (proposta !== undefined) out.push({ tipo: 'minuti', chiave: `minuti|${m.ym}|${v.day}|${v.hours}`, ym: m.ym, day: v.day, scritto: v.hours, proposta });
+      if (proposta !== undefined && !(m.ym in manuali)) out.push({ tipo: 'minuti', chiave: `minuti|${m.ym}|${v.day}|${v.hours}`, ym: m.ym, day: v.day, scritto: v.hours, proposta });
     }
   }
   const mesi = [...archivio.mesi].sort((a, b) => a.ym.localeCompare(b.ym));
   for (let i = 0; i < mesi.length; i++) {
     for (let j = i + 1; j < mesi.length; j++) {
+      // Se hai già corretto a mano uno dei due mesi, il dubbio è risolto
+      if (mesi[i].ym in manuali || mesi[j].ym in manuali) continue;
       if (firma(mesi[i]) === firma(mesi[j])) out.push({ tipo: 'copia', chiave: `copia|${mesi[i].ym}|${mesi[j].ym}`, a: mesi[i].ym, b: mesi[j].ym });
     }
   }
@@ -259,4 +267,28 @@ export function correggiOre(archivio: Archivio, ym: string, day: number, ore: nu
     ...archivio,
     mesi: archivio.mesi.map((m) => (m.ym !== ym ? m : { ...m, voci: m.voci.map((v) => (v.day === day ? { ...v, hours: ore } : v)) })),
   };
+}
+
+// ---------------------------------------------------------------------------
+// Casellario giudiziario
+
+/**
+ * Il certificato del casellario (lavoro a contatto con minori) si rinnova ogni stagione:
+ * la società toglie 5 € dal primo stipendio, di solito quello di ottobre (lavoro di settembre).
+ */
+export const COSTO_CASELLARIO = 5;
+
+/**
+ * Detrazione sul compenso di un mese di lavoro: c'è se quel mese si incassa nel mese dello
+ * stipendio scelto (1–12; 0 = nessuna detrazione) e se nel mese hai lavorato.
+ */
+export function detrazioneMese(ymLavoro: string, meseStipendio: number, ore: number): number {
+  if (!meseStipendio || ore <= 0) return 0;
+  return Number(mesePagamento(ymLavoro).slice(5, 7)) === meseStipendio ? COSTO_CASELLARIO : 0;
+}
+
+/** Compensi dell'anno (per data di pagamento), già senza le detrazioni */
+export function compensoAnno(a: AnnoStorico, tariffa: number, meseStipendio: number, turni: Turno[], archivio?: Pick<Archivio, 'mesi'>, manuali?: OreManuali): { euro: number; detrazioni: number } {
+  const detrazioni = a.mesi.reduce((s, ym) => s + detrazioneMese(ym, meseStipendio, riepilogoMese(ym, turni, archivio, manuali).ore), 0);
+  return { euro: Math.max(0, Math.round((a.ore * tariffa - detrazioni) * 100) / 100), detrazioni };
 }

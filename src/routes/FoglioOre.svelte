@@ -5,6 +5,7 @@
   import { vociDaTurni } from '../lib/foglio/daTurni';
   import { condividiFile, scaricaFile, fileCondivisibile, PDF_MIME } from '../lib/foglio/condividi';
   import { formatOre, formatEuro } from '../lib/ore';
+  import { detrazioneMese, mesePagamento } from '../lib/storico';
   import { vista, ymDa, ymOggi, ymStr, spostaYm, type Ym } from '../lib/vista.svelte';
   import TitoloMese from '../components/TitoloMese.svelte';
   import Icona from '../components/Icona.svelte';
@@ -19,6 +20,11 @@
   const totale = $derived(Math.round(voci.reduce((s, v) => s + v.hours, 0) * 100) / 100);
   const turniMese = $derived(dati.turniDelMese(ym.year, ym.month).filter((t) => !t.annullato));
   const nSost = $derived(turniMese.filter((t) => t.sostituisce).length);
+  // Casellario: 5 € tolti dallo stipendio che paga questo mese (di solito ottobre, per il lavoro di settembre)
+  const detrazione = $derived(detrazioneMese(ymStr(ym), dati.impostazioni.casellario, totale));
+  const compenso = $derived(Math.max(0, totale * dati.impostazioni.tariffa - detrazione));
+  const MESI_MIN = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
+  const meseStipendio = $derived(MESI_MIN[Number(mesePagamento(ymStr(ym)).slice(5, 7)) - 1]);
   const mesiConTurni = $derived(new Set(dati.turni.map((t) => t.data.slice(0, 7))));
 
   let messaggio = $state('');
@@ -158,7 +164,8 @@
     <button class="compenso" aria-pressed={compensoVisibile} onclick={() => (compensoVisibile = !compensoVisibile)}>
       <span class="compenso-txt">
         <span class="compenso-lbl">Compenso · solo tuo, non esportato</span>
-        <span class="m">{compensoVisibile ? formatEuro(totale * dati.impostazioni.tariffa) : '••• €'}</span>
+        <span class="m">{compensoVisibile ? formatEuro(compenso) : '••• €'}</span>
+        {#if compensoVisibile && detrazione}<span class="compenso-lbl">Stipendio di {meseStipendio}: già tolti {formatEuro(detrazione)} del casellario</span>{/if}
       </span>
       <Icona nome={compensoVisibile ? 'occhio-no' : 'occhio'} />
       <span class="sr">{compensoVisibile ? 'Nascondi il compenso' : 'Mostra il compenso'}</span>

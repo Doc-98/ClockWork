@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
 import {
   leggiArchivio, riepilogoMese, riepilogoAnno, ultimiMesi, controlliArchivio, correggiOre,
-  minutiScrittiComeDecimali, eSostituzione, mesePagamento, type Archivio,
+  minutiScrittiComeDecimali, eSostituzione, mesePagamento, detrazioneMese, compensoAnno, COSTO_CASELLARIO, type Archivio,
 } from './storico';
 import { generaFoglioOre } from './foglio/genera';
 import type { Turno } from './model';
@@ -104,5 +104,41 @@ describe('controlli sull’archivio', () => {
     const a = correggiOre(archivio([feb]), '2026-02', 11, 8.75);
     expect(a.mesi[0].voci[1]).toEqual({ day: 11, hours: 8.75, note: 'sost giorgio' });
     expect(controlliArchivio(a)).toEqual([]);
+  });
+});
+
+describe('ore inserite a mano', () => {
+  const nov = { ym: '2025-11', foglio: 'Novembre 25', voci: [{ day: 3, hours: 4 }, { day: 5, hours: 4.75, note: 'sost greta' }] };
+  const dic = { ym: '2025-12', foglio: 'Dicembre 25', voci: [{ day: 3, hours: 4 }, { day: 5, hours: 4.75, note: 'sost greta' }] };
+  const turni = [turno('2026-09-14', 900, 1050)];
+
+  it('valgono più dell’archivio, meno dei turni dell’app', () => {
+    expect(riepilogoMese('2025-12', turni, archivio([dic]), { '2025-12': 48.5 })).toEqual({ ym: '2025-12', ore: 48.5, oreSost: 0, nSost: 0, fonte: 'manuale' });
+    expect(riepilogoMese('2026-09', turni, undefined, { '2026-09': 99 }).fonte).toBe('app');
+    expect(riepilogoMese('2026-07', turni, undefined, { '2026-07': 12 }).ore).toBe(12);
+  });
+  it('correggere uno dei due mesi copiati toglie il controllo', () => {
+    expect(controlliArchivio(archivio([nov, dic]))).toHaveLength(1);
+    expect(controlliArchivio(archivio([nov, dic]), { '2025-12': 48.5 })).toEqual([]);
+  });
+  it('entrano nel totale dell’anno', () => {
+    const a = riepilogoAnno(2026, '2026-01', turni, archivio([dic]), { '2025-12': 48.5 });
+    expect(a.ore).toBe(48.5);
+  });
+});
+
+describe('casellario', () => {
+  it('5 € sullo stipendio di ottobre, cioè sul lavoro di settembre', () => {
+    expect(detrazioneMese('2026-09', 10, 38.25)).toBe(COSTO_CASELLARIO);
+    expect(detrazioneMese('2026-10', 10, 40)).toBe(0);
+    expect(detrazioneMese('2026-09', 0, 38.25)).toBe(0);
+    expect(detrazioneMese('2026-09', 10, 0)).toBe(0);
+    expect(detrazioneMese('2025-12', 1, 10)).toBe(COSTO_CASELLARIO);
+  });
+  it('tolto dai compensi dell’anno in cui arriva lo stipendio', () => {
+    const turni = [turno('2026-09-14', 900, 1500), turno('2026-10-05', 900, 1500)];
+    const a = riepilogoAnno(2026, '2026-10', turni);
+    expect(compensoAnno(a, 9, 10, turni)).toEqual({ euro: 20 * 9 - 5, detrazioni: 5 });
+    expect(compensoAnno(a, 9, 0, turni)).toEqual({ euro: 180, detrazioni: 0 });
   });
 });

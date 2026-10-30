@@ -4,7 +4,7 @@ import type { ScelteOrari } from './turni/importa';
 import { leggiModello } from './store';
 import { caricaModello } from './foglio/modello';
 import { nomeCollaboratore } from './foglio/genera';
-import type { Archivio } from './storico';
+import type { Archivio, OreManuali } from './storico';
 
 /**
  * Stato dell'app, condiviso tra le schermate e salvato sul telefono (IndexedDB).
@@ -26,6 +26,7 @@ const K = {
   esclusi: 'turni-esclusi',
   archivio: 'archivio-fogli-ore',
   avvisiChiusi: 'avvisi-chiusi',
+  oreManuali: 'ore-mesi-a-mano',
 };
 
 class Dati {
@@ -43,6 +44,8 @@ class Dati {
   archivio = $state<Archivio | undefined>();
   /** Avvisi che hai chiuso con la ×: non tornano finché non cambia quello che dicono */
   avvisiChiusi = $state<string[]>([]);
+  /** Ore totali inserite a mano per i mesi senza turni o con il foglio ore sbagliato */
+  oreManuali = $state<OreManuali>({});
   erroreSalvataggio = $state('');
 
   private coda: Promise<unknown> = Promise.resolve();
@@ -54,7 +57,7 @@ class Dati {
   }
 
   async carica() {
-    const [turni, imp, scelte, ultima, esclusi, archivio, avvisiChiusi] = await Promise.all([
+    const [turni, imp, scelte, ultima, esclusi, archivio, avvisiChiusi, oreManuali] = await Promise.all([
       get<Turno[]>(K.turni),
       get<Impostazioni>(K.impostazioni),
       get<ScelteOrari>(K.scelte),
@@ -62,6 +65,7 @@ class Dati {
       get<string[]>(K.esclusi),
       get<Archivio>(K.archivio),
       get<string[]>(K.avvisiChiusi),
+      get<OreManuali>(K.oreManuali),
     ]);
     this.turni = (turni ?? []).sort(ordinaTurni);
     this.impostazioni = completaImpostazioni(imp);
@@ -79,6 +83,7 @@ class Dati {
     this.esclusi = esclusi ?? [];
     this.archivio = archivio;
     this.avvisiChiusi = avvisiChiusi ?? [];
+    this.oreManuali = oreManuali ?? {};
     this.pronto = true;
   }
 
@@ -140,6 +145,19 @@ class Dati {
     this.archivio = a;
     if (a) await this.salva(K.archivio, a);
     else await del(K.archivio).catch(() => undefined);
+  }
+
+  /** Ore totali di un mese inserite a mano; undefined toglie la correzione */
+  setOreMese(ym: string, ore: number | undefined) {
+    const next = { ...this.oreManuali };
+    if (ore === undefined) delete next[ym];
+    else next[ym] = ore;
+    return this.setOreManuali(next);
+  }
+
+  setOreManuali(o: OreManuali) {
+    this.oreManuali = o;
+    return this.salva(K.oreManuali, o);
   }
 
   chiudiAvviso(chiave: string) {

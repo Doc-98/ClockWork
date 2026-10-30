@@ -2,25 +2,27 @@
   import { dati } from '../lib/dati.svelte';
   import { router } from '../lib/router.svelte';
   import { MESI } from '../lib/foglio/genera';
-  import { formatOre, formatEuro } from '../lib/ore';
+  import { formatOre, formatEuro, parseOre } from '../lib/ore';
   import { ymOggi, ymStr } from '../lib/vista.svelte';
   import {
-    leggiArchivio, riepilogoMese, riepilogoAnno, ultimiMesi, controlliArchivio, correggiOre, SOGLIA_INPS, SOGLIA_IRPEF, type Controllo,
+    leggiArchivio, riepilogoMese, riepilogoAnno, ultimiMesi, controlliArchivio, correggiOre, compensoAnno as calcolaCompenso,
+    SOGLIA_INPS, SOGLIA_IRPEF, COSTO_CASELLARIO, type Controllo,
   } from '../lib/storico';
   import Icona from '../components/Icona.svelte';
 
   const oggi = ymStr(ymOggi());
   const anno = ymOggi().year;
 
-  const mesi = $derived(ultimiMesi(oggi).map((ym) => riepilogoMese(ym, dati.turni, dati.archivio)));
+  const mesi = $derived(ultimiMesi(oggi).map((ym) => riepilogoMese(ym, dati.turni, dati.archivio, dati.oreManuali)));
   const massimo = $derived(Math.max(10, ...mesi.map((m) => m.ore)));
   const totale12 = $derived(mesi.reduce((s, m) => s + m.ore, 0));
   const sost12 = $derived(mesi.reduce((s, m) => s + m.oreSost, 0));
   const nSost12 = $derived(mesi.reduce((s, m) => s + m.nSost, 0));
 
   // Le soglie contano i compensi per data di pagamento: il lavoro di dicembre si incassa a gennaio
-  const annoSolare = $derived(riepilogoAnno(anno, oggi, dati.turni, dati.archivio));
-  const compensoAnno = $derived(annoSolare.ore * dati.impostazioni.tariffa);
+  const annoSolare = $derived(riepilogoAnno(anno, oggi, dati.turni, dati.archivio, dati.oreManuali));
+  const compenso = $derived(calcolaCompenso(annoSolare, dati.impostazioni.tariffa, dati.impostazioni.casellario, dati.turni, dati.archivio, dati.oreManuali));
+  const compensoAnno = $derived(compenso.euro);
   /** La barra arriva a 15.000 €, o poco oltre se li hai superati */
   const scala = $derived(Math.max(SOGLIA_IRPEF, compensoAnno * 1.05));
   const pct = (euro: number) => `${Math.min(100, (euro / scala) * 100)}%`;
@@ -35,7 +37,29 @@
   let scelto = $state(oggi);
   const dettaglio = $derived(mesi.find((m) => m.ym === scelto) ?? mesi.at(-1)!);
 
-  const controlli = $derived(dati.archivio ? controlliArchivio(dati.archivio) : []);
+  const controlli = $derived(dati.archivio ? controlliArchivio(dati.archivio, dati.oreManuali) : []);
+
+  // Ore di un mese inserite a mano: per i mesi senza dati o con il foglio ore sbagliato
+  let modifica = $state<string | undefined>();
+  let oreInput = $state('');
+  const oreNum = $derived(parseOre(oreInput));
+  const oreValide = $derived(oreNum !== null && !Number.isNaN(oreNum) && oreNum >= 0 && oreNum <= 400);
+  function apriModifica(ym: string) {
+    modifica = ym;
+    const r = mesi.find((m) => m.ym === ym) ?? riepilogoMese(ym, dati.turni, dati.archivio, dati.oreManuali);
+    oreInput = r.fonte === 'nessuna' ? '' : formatOre(r.ore);
+  }
+  async function salvaOre() {
+    if (!modifica || !oreValide) return;
+    const ym = modifica;
+    await dati.setOreMese(ym, oreNum!);
+    modifica = undefined;
+    messaggio = `${nomeMese(ym)}: ${formatOre(oreNum!)} h inserite a mano.`;
+  }
+  async function togliOre(ym: string) {
+    await dati.setOreMese(ym, undefined);
+    modifica = undefined;
+  }
 
   const BREVI = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
   const meseNum = (ym: string) => Number(ym.slice(5, 7));
@@ -96,6 +120,26 @@
   }
 </script>
 
+{#snippet editorOre(ym: string, togli: boolean)}
+  <div class="editor">
+    <label class="field"><span class="lbl">Ore lavorate a {MESI[meseNum(ym) - 1].toLowerCase()} {ym.slice(0, 4)}</span>
+      <span class="row">
+        <input class="inp m grow" bind:value={oreInput} inputmode="decimal" placeholder="es. 48,5 o 48:30"
+          onkeydown={(e) => e.key === 'Enter' && salvaOre()} />
+        <button class="btn btn-secondary corto" disabled={!oreValide} onclick={salvaOre}>Salva</button>
+      </span>
+    </label>
+    <div class="editor-piede">
+      <span class="muted small">Il totale del mese basta: lo uso al posto dell’archivio.</span>
+      {#if togli}
+        <button class="link small-link" onclick={() => togliOre(ym)}>Togli</button>
+      {:else}
+        <button class="link small-link" onclick={() => (modifica = undefined)}>Annulla</button>
+      {/if}
+    </div>
+  </div>
+{/snippet}
+
 <section class="page">
   <header class="bar">
     <button class="link" onclick={() => router.indietro('#/foglio')}><Icona nome="sx" /> Foglio ore</button>
@@ -136,6 +180,9 @@
           Oltre i 15.000 €: sulla parte in più anche l’IRPEF
         {/if}
       </p>
+      {#if compenso.detrazioni}
+        <p class="muted small nomargin">Già tolti {formatEuro(compenso.detrazioni)} del casellario giudiziario.</p>
+      {/if}
       <p class="muted small nomargin">Le soglie sommano i compensi sportivi di tutte le società con cui lavori.</p>
     {:else}
       <p class="muted small nomargin">Tocca l’occhio per vedere gli importi e le soglie dei 5.000 e 15.000 €.</p>
@@ -180,18 +227,27 @@
       <span><i class="q sost-c"></i>Sostituzioni (n°)</span>
     </div>
     <div class="dettaglio">
-      <div class="det-txt">
-        <span class="det-nome">{nomeMese(dettaglio.ym)}</span>
-        <span class="muted small">
-          {#if dettaglio.fonte === 'nessuna'}
-            Nessun dato per questo mese
-          {:else}
-            {`${formatOre(dettaglio.ore)} h`}{dettaglio.nSost ? ` · ${dettaglio.nSost} ${dettaglio.nSost === 1 ? 'sostituzione' : 'sostituzioni'} (${formatOre(dettaglio.oreSost)} h)` : ''}{` · ${dettaglio.fonte === 'app' ? 'da ClockWork' : 'dall’archivio'}`}
-          {/if}
-        </span>
+      <div class="det-riga">
+        <div class="det-txt">
+          <span class="det-nome">{nomeMese(dettaglio.ym)}</span>
+          <span class="muted small">
+            {#if dettaglio.fonte === 'nessuna'}
+              Nessun dato per questo mese
+            {:else}
+              {`${formatOre(dettaglio.ore)} h`}{dettaglio.nSost ? ` · ${dettaglio.nSost} ${dettaglio.nSost === 1 ? 'sostituzione' : 'sostituzioni'} (${formatOre(dettaglio.oreSost)} h)` : ''}{` · ${dettaglio.fonte === 'app' ? 'da ClockWork' : dettaglio.fonte === 'manuale' ? 'inserite a mano' : 'dall’archivio'}`}
+            {/if}
+          </span>
+        </div>
+        {#if dettaglio.fonte === 'app'}
+          <a class="link small-link" href={`#/foglio/${dettaglio.ym}`}>Foglio ore <Icona nome="dx" /></a>
+        {:else if modifica !== dettaglio.ym}
+          <button class="link small-link" onclick={() => apriModifica(dettaglio.ym)}>
+            <Icona nome="matita" /> {dettaglio.fonte === 'nessuna' ? 'Inserisci ore' : 'Correggi'}
+          </button>
+        {/if}
       </div>
-      {#if dettaglio.fonte !== 'archivio'}
-        <a class="link small-link" href={`#/foglio/${dettaglio.ym}`}>Foglio ore <Icona nome="dx" /></a>
+      {#if modifica === dettaglio.ym && dettaglio.fonte !== 'app'}
+        {@render editorOre(dettaglio.ym, dettaglio.fonte === 'manuale')}
       {/if}
     </div>
     <div class="piede">
@@ -213,13 +269,22 @@
             </div>
           {:else}
             <p class="nomargin"><b>{nomeMese(c.a)} e {nomeMese(c.b)}</b> hanno le stesse ore giorno per giorno: uno dei due fogli sembra una copia dell’altro.</p>
-            <div class="azioni">
-              <button class="btn btn-warn-ghost" onclick={() => lascia(c)}>Va bene così</button>
-            </div>
+            {#if modifica === c.a || modifica === c.b}
+              <div class="seg scelta" style="grid-template-columns: repeat(2, minmax(0, 1fr))" role="group" aria-label="Mese da correggere">
+                <button aria-pressed={modifica === c.a} onclick={() => apriModifica(c.a)}>{nomeMese(c.a)}</button>
+                <button aria-pressed={modifica === c.b} onclick={() => apriModifica(c.b)}>{nomeMese(c.b)}</button>
+              </div>
+              {@render editorOre(modifica, false)}
+            {:else}
+              <div class="azioni">
+                <button class="btn btn-warn" onclick={() => apriModifica(c.b)}>Correggi le ore</button>
+                <button class="btn btn-warn-ghost" onclick={() => lascia(c)}>Va bene così</button>
+              </div>
+            {/if}
           {/if}
         </div>
       {/each}
-      <p class="small nomargin nota-avviso">Le correzioni valgono qui nello Storico: il file originale non lo tocco.</p>
+      <p class="small nomargin nota-avviso">Le correzioni valgono qui nello Storico: il file originale non lo tocco. Se non hai più il foglio giusto, basta il totale delle ore del mese.</p>
     </section>
   {/if}
 
@@ -291,11 +356,22 @@
   .q { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
   .base-c { background: color-mix(in srgb, var(--cloro) 45%, var(--surface)); }
   .sost-c { background: var(--ink); }
-  .dettaglio { display: flex; justify-content: space-between; align-items: center; gap: var(--space-8); padding: var(--space-10) var(--space-12); border-radius: var(--radius-md); background: var(--surface-sunken); }
+  .dettaglio { display: flex; flex-direction: column; gap: var(--space-10); padding: var(--space-10) var(--space-12); border-radius: var(--radius-md); background: var(--surface-sunken); }
+  .det-riga { display: flex; justify-content: space-between; align-items: center; gap: var(--space-8); }
+  .editor { display: flex; flex-direction: column; gap: var(--space-6); }
+  .editor .inp { background: var(--surface); }
+  .editor-piede { display: flex; justify-content: space-between; align-items: center; gap: var(--space-8); }
+  .editor-piede .small-link { min-height: 36px; }
+  .corto { padding: 0 var(--space-16); height: 46px; }
+  .avviso .editor .lbl { color: inherit; }
+  .avviso .editor .muted { color: inherit; opacity: 0.85; }
+  .avviso .editor .link { color: inherit; }
+  .scelta { background: color-mix(in srgb, var(--warn) 12%, transparent); }
   .det-txt { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
   .det-nome { font-weight: 600; }
   .small-link { font-size: var(--text-sm); gap: var(--space-2); white-space: nowrap; }
   .small-link :global(.ic) { width: 18px; height: 18px; }
+  .small-link :global(.ic:first-child) { margin-right: var(--space-4); }
   .piede { display: flex; justify-content: space-between; gap: var(--space-8); padding-top: var(--space-10); border-top: 1px solid var(--line-soft); font-size: var(--text-md); }
   .b { font-weight: 600; }
   .nowrap { white-space: nowrap; }

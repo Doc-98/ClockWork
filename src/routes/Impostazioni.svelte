@@ -42,6 +42,15 @@
     aperta = undefined;
   }
 
+  // Casellario giudiziario: mese dello stipendio da cui la società toglie i 5 €
+  const MESI_STIPENDIO = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
+  const lavoroDi = (m: number) => MESI_STIPENDIO[(m + 10) % 12];
+  const casellarioTxt = $derived(dati.impostazioni.casellario ? `5 € dallo stipendio di ${MESI_STIPENDIO[dati.impostazioni.casellario - 1]}` : 'Nessuna detrazione');
+  function setCasellario(e: Event) {
+    const v = Number((e.currentTarget as HTMLSelectElement).value);
+    dati.setImpostazioni({ ...dati.impostazioni, casellario: v });
+  }
+
   function quando(iso?: string) {
     if (!iso) return '';
     const d = new Date(iso);
@@ -69,6 +78,7 @@
       // così dopo un ripristino l'app ritrova lo stesso calendario invece di crearne un altro
       googleCalendarId: gcal.stato.calendarId ?? gcal.stato.calendarioPrecedente,
       archivio: $state.snapshot(dati.archivio),
+      oreManuali: $state.snapshot(dati.oreManuali),
     };
     const bytes = new TextEncoder().encode(JSON.stringify(backup, null, 1));
     const oggi = new Date().toISOString().slice(0, 10);
@@ -89,6 +99,7 @@
       if (b.impostazioni) await dati.setImpostazioni(completaImpostazioni({ ...dati.impostazioni, ...b.impostazioni }));
       if (b.scelteOrari) await dati.setScelte(b.scelteOrari);
       if (typeof b.googleCalendarId === 'string' && b.googleCalendarId) await gcal.adotta(b.googleCalendarId);
+      if (b.oreManuali && typeof b.oreManuali === 'object') await dati.setOreManuali(b.oreManuali);
       if (b.archivio && Array.isArray(b.archivio.mesi)) await dati.setArchivio({ ...b.archivio, ignorati: b.archivio.ignorati ?? [] });
       nome = dati.impostazioni.nome;
       tariffa = String(dati.impostazioni.tariffa).replace('.', ',');
@@ -138,6 +149,25 @@
             <label class="field"><span class="lbl">Euro all'ora</span>
               <span class="row"><input class="inp m grow" bind:value={tariffa} inputmode="decimal" /><button class="btn btn-secondary corto" disabled={!tariffaCambiata} onclick={salvaTariffa}>Salva</button></span></label>
             <p class="muted small nomargin">Serve solo a stimare il compenso: non finisce nel foglio ore.</p>
+          </div>
+        {/if}
+      </div>
+      <div>
+        <button class="voce" aria-expanded={aperta === 'casellario'} onclick={() => apri('casellario')}>
+          <span class="voce-ico"><Icona nome="foglio" /></span>
+          <span class="voce-txt"><span class="voce-nome">Casellario giudiziario</span>{#if aperta !== 'casellario'}<span class="voce-val"><span>{casellarioTxt}</span></span>{/if}</span>
+          <Icona nome="giu" class="chev" />
+        </button>
+        {#if aperta === 'casellario'}
+          <div class="voce-corpo">
+            <label class="field"><span class="lbl">Stipendio da cui la società toglie i 5 €</span>
+              <select class="inp" value={dati.impostazioni.casellario} onchange={setCasellario}>
+                {#each MESI_STIPENDIO as m, i (m)}
+                  <option value={i + 1}>{m[0].toUpperCase() + m.slice(1)} (lavoro di {lavoroDi(i + 1).slice(0, 3)})</option>
+                {/each}
+                <option value={0}>Nessuna detrazione</option>
+              </select></label>
+            <p class="muted small nomargin">Il certificato si rinnova ogni stagione e costa 5 €: di solito li tolgono dallo stipendio di ottobre. Lo sottraggo dal compenso nel Foglio ore e nello Storico.</p>
           </div>
         {/if}
       </div>
