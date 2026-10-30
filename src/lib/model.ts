@@ -97,13 +97,11 @@ export interface Impostazioni {
   meseLegato: boolean;
   /** €/h, solo per te */
   tariffa: number;
-  /** Soglia annua dei compensi sportivi da tenere d'occhio nello Storico (€) */
-  soglia: number;
   aree: Partial<Record<Area, PersonalizzazioneArea>>;
   calendario: ImpostazioniCalendario;
 }
 
-export const IMPOSTAZIONI_DEFAULT: Impostazioni = { nome: '', alias: [], meseLegato: true, tariffa: 9, soglia: 10000, aree: {}, calendario: CALENDARIO_DEFAULT };
+export const IMPOSTAZIONI_DEFAULT: Impostazioni = { nome: '', alias: [], meseLegato: true, tariffa: 9, aree: {}, calendario: CALENDARIO_DEFAULT };
 
 /** Completa impostazioni salvate da versioni precedenti (o da un backup) con i valori predefiniti. */
 export function completaImpostazioni(imp?: Partial<Impostazioni>): Impostazioni {

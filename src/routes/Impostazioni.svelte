@@ -42,15 +42,6 @@
     aperta = undefined;
   }
 
-  // Soglia annua dei compensi (Storico)
-  let soglia = $state(String(dati.impostazioni.soglia));
-  const sogliaNum = $derived(Number(soglia.replace(/\./g, '').replace(',', '.')));
-  const sogliaCambiata = $derived(soglia.trim() !== '' && sogliaNum > 0 && sogliaNum !== dati.impostazioni.soglia);
-  async function salvaSoglia() {
-    await dati.setImpostazioni({ ...dati.impostazioni, soglia: sogliaNum });
-    aperta = undefined;
-  }
-
   function quando(iso?: string) {
     if (!iso) return '';
     const d = new Date(iso);
@@ -101,7 +92,6 @@
       if (b.archivio && Array.isArray(b.archivio.mesi)) await dati.setArchivio({ ...b.archivio, ignorati: b.archivio.ignorati ?? [] });
       nome = dati.impostazioni.nome;
       tariffa = String(dati.impostazioni.tariffa).replace('.', ',');
-      soglia = String(dati.impostazioni.soglia);
       errore = '';
       messaggio = `Ripristinati ${turni.length} turni.`;
     } catch {
@@ -195,20 +185,6 @@
   <section class="gruppo">
     <h2 class="lbl">Foglio ore</h2>
     <div class="card voci">
-      <div>
-        <button class="voce" aria-expanded={aperta === 'soglia'} onclick={() => apri('soglia')}>
-          <span class="voce-ico"><Icona nome="grafico" /></span>
-          <span class="voce-txt"><span class="voce-nome">Soglia annua dei compensi</span>{#if aperta !== 'soglia'}<span class="voce-val"><span>{formatEuro(dati.impostazioni.soglia)} · nello Storico</span></span>{/if}</span>
-          <Icona nome="giu" class="chev" />
-        </button>
-        {#if aperta === 'soglia'}
-          <div class="voce-corpo">
-            <label class="field"><span class="lbl">Euro nell'anno solare</span>
-              <span class="row"><input class="inp m grow" bind:value={soglia} inputmode="decimal" /><button class="btn btn-secondary corto" disabled={!sogliaCambiata} onclick={salvaSoglia}>Salva</button></span></label>
-            <p class="muted small nomargin">Lo Storico ti mostra quanto manca. Il modello della società parla di 10.000 € di compensi sportivi nell'anno solare.</p>
-          </div>
-        {/if}
-      </div>
       <label class="voce">
         <span class="voce-ico"><Icona nome="scambio" /></span>
         <span class="voce-txt">

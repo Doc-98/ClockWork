@@ -25,6 +25,7 @@ const K = {
   import: 'ultima-importazione',
   esclusi: 'turni-esclusi',
   archivio: 'archivio-fogli-ore',
+  avvisiChiusi: 'avvisi-chiusi',
 };
 
 class Dati {
@@ -40,6 +41,8 @@ class Dati {
   esclusi = $state<string[]>([]);
   /** Fogli ore dei mesi prima di ClockWork, per lo Storico */
   archivio = $state<Archivio | undefined>();
+  /** Avvisi che hai chiuso con la ×: non tornano finché non cambia quello che dicono */
+  avvisiChiusi = $state<string[]>([]);
   erroreSalvataggio = $state('');
 
   private coda: Promise<unknown> = Promise.resolve();
@@ -51,13 +54,14 @@ class Dati {
   }
 
   async carica() {
-    const [turni, imp, scelte, ultima, esclusi, archivio] = await Promise.all([
+    const [turni, imp, scelte, ultima, esclusi, archivio, avvisiChiusi] = await Promise.all([
       get<Turno[]>(K.turni),
       get<Impostazioni>(K.impostazioni),
       get<ScelteOrari>(K.scelte),
       get<UltimaImportazione>(K.import),
       get<string[]>(K.esclusi),
       get<Archivio>(K.archivio),
+      get<string[]>(K.avvisiChiusi),
     ]);
     this.turni = (turni ?? []).sort(ordinaTurni);
     this.impostazioni = completaImpostazioni(imp);
@@ -74,6 +78,7 @@ class Dati {
     this.ultimaImportazione = ultima;
     this.esclusi = esclusi ?? [];
     this.archivio = archivio;
+    this.avvisiChiusi = avvisiChiusi ?? [];
     this.pronto = true;
   }
 
@@ -135,6 +140,12 @@ class Dati {
     this.archivio = a;
     if (a) await this.salva(K.archivio, a);
     else await del(K.archivio).catch(() => undefined);
+  }
+
+  chiudiAvviso(chiave: string) {
+    if (this.avvisiChiusi.includes(chiave)) return;
+    this.avvisiChiusi = [...this.avvisiChiusi, chiave];
+    return this.salva(K.avvisiChiusi, this.avvisiChiusi);
   }
 
   turniDelMese(year: number, month: number): Turno[] {

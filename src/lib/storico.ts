@@ -171,23 +171,49 @@ export function ultimiMesi(fino: string, n = 12): string[] {
   });
 }
 
+/**
+ * Soglie dei compensi sportivi dilettantistici, sull'anno solare in cui il pagamento arriva
+ * (cumulative tra tutte le società sportive):
+ * fino a 5.000 € niente contributi né tasse; oltre, contributi INPS sulla parte eccedente;
+ * oltre 15.000 € anche l'IRPEF sulla parte che li supera.
+ */
+export const SOGLIA_INPS = 5000;
+export const SOGLIA_IRPEF = 15000;
+
+/** Il compenso di un mese arriva il mese dopo: dicembre si incassa a gennaio */
+export const mesePagamento = (ym: string) => spostaChiave(ym, 1);
+
+function spostaChiave(ym: string, delta: number): string {
+  const [y, m] = ym.split('-').map(Number);
+  const k = y * 12 + m - 1 + delta;
+  return ymChiave(Math.floor(k / 12), (k % 12) + 1);
+}
+
 export interface AnnoStorico {
+  /** Anno solare dei pagamenti */
   anno: number;
+  /** Mesi di lavoro pagati in quell'anno, fino a `fino` compreso: da dicembre dell'anno prima */
+  mesi: string[];
   ore: number;
-  /** Mesi dell'anno, fino a `fino`, senza dati né nell'app né nell'archivio */
+  /** Di quei mesi, quelli senza dati né nell'app né nell'archivio */
   mancanti: string[];
 }
 
+/**
+ * Le soglie contano i compensi per data di pagamento: nell'anno `anno` entrano i mesi di lavoro
+ * da dicembre dell'anno prima a novembre, fino al mese `fino` compreso.
+ */
 export function riepilogoAnno(anno: number, fino: string, turni: Turno[], archivio?: Pick<Archivio, 'mesi'>): AnnoStorico {
-  const ultimo = fino.startsWith(`${anno}-`) ? Number(fino.slice(5, 7)) : 12;
+  const mesi: string[] = [];
+  for (let ym = ymChiave(anno - 1, 12); ym <= ymChiave(anno, 11) && ym <= fino; ym = spostaChiave(ym, 1)) mesi.push(ym);
   let ore = 0;
   const mancanti: string[] = [];
-  for (let m = 1; m <= ultimo; m++) {
-    const r = riepilogoMese(ymChiave(anno, m), turni, archivio);
+  for (const ym of mesi) {
+    const r = riepilogoMese(ym, turni, archivio);
     ore += r.ore;
-    if (r.fonte === 'nessuna') mancanti.push(r.ym);
+    if (r.fonte === 'nessuna') mancanti.push(ym);
   }
-  return { anno, ore: arrotonda(ore), mancanti };
+  return { anno, mesi, ore: arrotonda(ore), mancanti };
 }
 
 // ---------------------------------------------------------------------------

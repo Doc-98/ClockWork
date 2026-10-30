@@ -5,7 +5,7 @@
   import { formatOre, formatEuro } from '../lib/ore';
   import { ymOggi, ymStr } from '../lib/vista.svelte';
   import {
-    leggiArchivio, riepilogoMese, riepilogoAnno, ultimiMesi, controlliArchivio, correggiOre, type Controllo,
+    leggiArchivio, riepilogoMese, riepilogoAnno, ultimiMesi, controlliArchivio, correggiOre, SOGLIA_INPS, SOGLIA_IRPEF, type Controllo,
   } from '../lib/storico';
   import Icona from '../components/Icona.svelte';
 
@@ -18,10 +18,17 @@
   const sost12 = $derived(mesi.reduce((s, m) => s + m.oreSost, 0));
   const nSost12 = $derived(mesi.reduce((s, m) => s + m.nSost, 0));
 
+  // Le soglie contano i compensi per data di pagamento: il lavoro di dicembre si incassa a gennaio
   const annoSolare = $derived(riepilogoAnno(anno, oggi, dati.turni, dati.archivio));
   const compensoAnno = $derived(annoSolare.ore * dati.impostazioni.tariffa);
-  const soglia = $derived(dati.impostazioni.soglia);
-  const quota = $derived(soglia > 0 ? Math.min(1, compensoAnno / soglia) : 0);
+  /** La barra arriva a 15.000 €, o poco oltre se li hai superati */
+  const scala = $derived(Math.max(SOGLIA_IRPEF, compensoAnno * 1.05));
+  const pct = (euro: number) => `${Math.min(100, (euro / scala) * 100)}%`;
+  const fascia = $derived(compensoAnno <= SOGLIA_INPS ? 'esente' : compensoAnno <= SOGLIA_IRPEF ? 'inps' : 'irpef');
+
+  // Avviso dei mesi senza ore: si chiude con la × e torna solo se cambiano i mesi mancanti
+  const chiaveMancanti = $derived(`mancanti|${annoSolare.anno}|${annoSolare.mancanti.join(',')}|${dati.archivio ? 'a' : '-'}`);
+  const mostraMancanti = $derived(annoSolare.mancanti.length > 0 && !dati.avvisiChiusi.includes(chiaveMancanti));
   // Come nel Foglio ore: gli importi si vedono solo se li chiedi
   let euroVisibili = $state(false);
 
@@ -36,12 +43,13 @@
   const breve = (ym: string) => `${BREVI[meseNum(ym) - 1]} ${ym.slice(2, 4)}`;
   const iniziale = (ym: string) => MESI[meseNum(ym) - 1][0];
 
-  /** «gen–ago» oppure «gen, mar e apr» */
+  /** «gen–ago» oppure «dic 25 e feb» */
   function elencoMesi(yms: string[]): string {
-    const n = yms.map(meseNum);
-    const consecutivi = n.every((x, i) => i === 0 || x === n[i - 1] + 1);
-    if (n.length > 2 && consecutivi) return `${BREVI[n[0] - 1]}–${BREVI[n.at(-1)! - 1]}`;
-    const b = n.map((x) => BREVI[x - 1]);
+    const k = yms.map((ym) => Number(ym.slice(0, 4)) * 12 + meseNum(ym));
+    const consecutivi = k.every((x, i) => i === 0 || x === k[i - 1] + 1);
+    const anni = new Set(yms.map((ym) => ym.slice(0, 4))).size > 1;
+    const b = yms.map((ym) => (anni ? breve(ym) : BREVI[meseNum(ym) - 1]));
+    if (b.length > 2 && consecutivi) return `${b[0]}–${b.at(-1)}`;
     return b.length === 1 ? b[0] : `${b.slice(0, -1).join(', ')} e ${b.at(-1)}`;
   }
 
@@ -97,7 +105,7 @@
 
   <div class="card anno">
     <div class="riga">
-      <span class="lbl">Anno solare {anno}</span>
+      <span class="lbl">Compensi pagati nel {annoSolare.anno}</span>
       <button class="occhio" aria-pressed={euroVisibili} onclick={() => (euroVisibili = !euroVisibili)}>
         <Icona nome={euroVisibili ? 'occhio-no' : 'occhio'} />
         <span class="sr">{euroVisibili ? 'Nascondi gli importi' : 'Mostra gli importi'}</span>
@@ -107,22 +115,40 @@
       <span class="d grande">{euroVisibili ? formatEuro(compensoAnno) : '••• €'}</span>
       <span class="m muted">{formatOre(annoSolare.ore)} h</span>
     </div>
+    <p class="muted small nomargin">Lavoro da {breve(annoSolare.mesi[0])} a {breve(annoSolare.mesi.at(-1)!)}: ogni mese si incassa il mese dopo.</p>
     {#if euroVisibili}
-      <div class="barra" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={Math.round(quota * 100)} aria-label="Quota della soglia annua">
-        <div style="width: {quota * 100}%" class:oltre={quota >= 0.9}></div>
+      <div class="soglie">
+        <div class="barra" role="progressbar" aria-valuemin="0" aria-valuemax={SOGLIA_IRPEF} aria-valuenow={Math.round(compensoAnno)} aria-label="Compensi dell'anno rispetto alle soglie">
+          <div class="riempi {fascia}" style="width: {pct(compensoAnno)}"></div>
+          <span class="tacca" style="left: {pct(SOGLIA_INPS)}"></span>
+        </div>
+        <div class="etichette m">
+          <span style="left: {pct(SOGLIA_INPS)}">5.000</span>
+          <span class="fine" style="left: {pct(SOGLIA_IRPEF)}">15.000</span>
+        </div>
       </div>
-      <p class="muted small nomargin">
-        {Math.round(quota * 100)}% della soglia di {formatEuro(soglia)}{compensoAnno < soglia ? ` · mancano ${formatEuro(soglia - compensoAnno)}` : ' · superata'}
+      <p class="small nomargin stato {fascia}">
+        {#if fascia === 'esente'}
+          Sotto i 5.000 €: niente contributi né tasse · mancano {formatEuro(SOGLIA_INPS - compensoAnno)}
+        {:else if fascia === 'inps'}
+          Oltre i 5.000 €: contributi INPS sulla parte in più · mancano {formatEuro(SOGLIA_IRPEF - compensoAnno)} ai 15.000
+        {:else}
+          Oltre i 15.000 €: sulla parte in più anche l’IRPEF
+        {/if}
       </p>
+      <p class="muted small nomargin">Le soglie sommano i compensi sportivi di tutte le società con cui lavori.</p>
     {:else}
-      <p class="muted small nomargin">Soglia annua {formatEuro(soglia)} · tocca l’occhio per vedere a che punto sei.</p>
+      <p class="muted small nomargin">Tocca l’occhio per vedere gli importi e le soglie dei 5.000 e 15.000 €.</p>
     {/if}
-    {#if annoSolare.mancanti.length}
-      <p class="mancanti small nomargin">
-        {dati.archivio
-          ? `Nessuna ora per ${elencoMesi(annoSolare.mancanti)}: se hai lavorato, mancano anche nell’archivio.`
-          : `Non ho le ore di ${elencoMesi(annoSolare.mancanti)}: carica l’archivio qui sotto per avere il totale dell’anno.`}
-      </p>
+    {#if mostraMancanti}
+      <div class="mancanti small">
+        <p class="nomargin">
+          {dati.archivio
+            ? `Nessuna ora per ${elencoMesi(annoSolare.mancanti)}: se hai lavorato, mancano anche nell’archivio.`
+            : `Non ho le ore di ${elencoMesi(annoSolare.mancanti)}: carica l’archivio qui sotto per avere il totale dell’anno.`}
+        </p>
+        <button class="chiudi" aria-label="Chiudi l’avviso" onclick={() => dati.chiudiAvviso(chiaveMancanti)}><Icona nome="chiudi" /></button>
+      </div>
     {/if}
   </div>
 
@@ -232,10 +258,20 @@
   .occhio { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; margin: calc(var(--space-12) * -1) calc(var(--space-12) * -1) calc(var(--space-12) * -1) 0; border: none; background: none; color: var(--muted); border-radius: var(--radius-sm); cursor: pointer; }
   .cifre { display: flex; align-items: baseline; gap: var(--space-8); flex-wrap: wrap; }
   .grande { font-size: var(--text-3xl); font-weight: 800; line-height: 1.1; }
-  .barra { height: 8px; border-radius: var(--radius-pill); background: var(--line-soft); overflow: hidden; }
-  .barra > div { height: 100%; border-radius: var(--radius-pill); background: var(--cloro); }
-  .barra > div.oltre { background: var(--warn); }
-  .mancanti { color: var(--warn); }
+  .soglie { display: flex; flex-direction: column; gap: var(--space-4); }
+  .barra { position: relative; height: 8px; border-radius: var(--radius-pill); background: var(--line-soft); overflow: hidden; }
+  .riempi { height: 100%; border-radius: var(--radius-pill); background: var(--cloro); }
+  .riempi.irpef { background: var(--warn); }
+  .tacca { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--surface); }
+  .etichette { position: relative; height: 14px; font-size: var(--text-2xs); color: var(--muted); }
+  .etichette span { position: absolute; transform: translateX(-50%); }
+  .etichette span.fine { transform: translateX(-100%); }
+  .stato { font-weight: 600; color: var(--cloro-ink); }
+  .stato.irpef { color: var(--warn); }
+  .mancanti { display: flex; align-items: flex-start; gap: var(--space-8); padding: var(--space-8) var(--space-4) var(--space-8) var(--space-12); border-radius: var(--radius-md); background: var(--warn-bg); color: var(--warn); line-height: 1.4; }
+  .mancanti p { flex: 1; padding-top: var(--space-2); }
+  .chiudi { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 36px; height: 36px; margin: calc(var(--space-6) * -1) 0; border: none; background: none; color: inherit; border-radius: var(--radius-sm); cursor: pointer; }
+  .chiudi :global(.ic) { width: 18px; height: 18px; }
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
   .colonne { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--space-4); align-items: end; }

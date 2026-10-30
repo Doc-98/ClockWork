@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
 import {
   leggiArchivio, riepilogoMese, riepilogoAnno, ultimiMesi, controlliArchivio, correggiOre,
-  minutiScrittiComeDecimali, eSostituzione, type Archivio,
+  minutiScrittiComeDecimali, eSostituzione, mesePagamento, type Archivio,
 } from './storico';
 import { generaFoglioOre } from './foglio/genera';
 import type { Turno } from './model';
@@ -52,10 +52,16 @@ describe('riepilogo per mese', () => {
   it('mese senza dati', () => {
     expect(riepilogoMese('2026-03', turni, arch).fonte).toBe('nessuna');
   });
-  it('anno solare fino al mese indicato, con i mesi mancanti', () => {
+  it('anno dei pagamenti: da dicembre dell’anno prima, fino al mese indicato', () => {
     const a = riepilogoAnno(2026, '2026-03', turni, arch);
+    expect(a.mesi).toEqual(['2025-12', '2026-01', '2026-02', '2026-03']);
     expect(a.ore).toBe(11.5);
-    expect(a.mancanti).toEqual(['2026-02', '2026-03']);
+    expect(a.mancanti).toEqual(['2025-12', '2026-02', '2026-03']);
+  });
+  it('dicembre conta per l’anno dopo', () => {
+    expect(riepilogoAnno(2026, '2026-12', turni, arch).mesi.at(-1)).toBe('2026-11');
+    expect(riepilogoAnno(2027, '2026-12', turni, arch).mesi).toEqual(['2026-12']);
+    expect(mesePagamento('2025-12')).toBe('2026-01');
   });
   it('ultimi 12 mesi attraverso il cambio d’anno', () => {
     const m = ultimiMesi('2026-09');
