@@ -29,5 +29,6 @@ export function oreInParole(n: number): string {
 }
 
 export function formatEuro(n: number): string {
-  return n.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' });
+  // «3.244,05 €»: in italiano il separatore delle migliaia di norma manca sotto i 10.000, qui serve per leggere bene
+  return n.toLocaleString('it-IT', { style: 'currency', currency: 'EUR', useGrouping: 'always' } as Intl.NumberFormatOptions);
 }

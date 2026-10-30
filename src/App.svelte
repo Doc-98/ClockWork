@@ -18,6 +18,7 @@
   import FoglioOre from './routes/FoglioOre.svelte';
   import Impostazioni from './routes/Impostazioni.svelte';
   import Personalizza from './routes/Personalizza.svelte';
+  import Storico from './routes/Storico.svelte';
 
   let aggiornamento = $state<(() => Promise<void>) | undefined>();
 
@@ -101,6 +102,8 @@
     {/key}
   {:else if router.rotta.nome === 'foglio'}
     <FoglioOre rotta={router.rotta} />
+  {:else if router.rotta.nome === 'storico'}
+    <Storico />
   {:else if router.rotta.nome === 'impostazioni'}
     <Impostazioni />
   {:else if router.rotta.nome === 'personalizza'}

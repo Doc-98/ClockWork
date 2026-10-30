@@ -9,6 +9,7 @@ export type Rotta =
   | { nome: 'foglio-turni' }
   | { nome: 'rivedi'; mese?: string }
   | { nome: 'foglio'; ym?: string }
+  | { nome: 'storico' }
   | { nome: 'turno'; id?: string; data?: string; tipo?: 'sost' }
   | { nome: 'impostazioni' }
   | { nome: 'personalizza' };
@@ -29,6 +30,8 @@ function leggi(): Rotta {
       return { nome: 'rivedi', mese: q.get('mese') ?? undefined };
     case 'foglio':
       return { nome: 'foglio', ym: b };
+    case 'storico':
+      return { nome: 'storico' };
     case 'turno':
       return { nome: 'turno', id: b && b !== 'nuovo' ? b : undefined, data: q.get('data') ?? undefined, tipo: q.get('tipo') === 'sost' ? 'sost' : undefined };
     case 'impostazioni':

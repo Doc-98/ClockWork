@@ -13,6 +13,7 @@
     check: '<path d="M5 12l4 4 10-10"/>',
     piu: '<path d="M12 5v14M5 12h14"/>',
     condividi: '<path d="M12 3v12M7 8l5-5 5 5M5 14v6h14v-6"/>',
+    grafico: '<path d="M4 20h16"/><path d="M7 16v-5M12 16V6M17 16v-8"/>',
     tabella: '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 10h16M4 15h16M10 4v16"/>',
     matita: '<path d="M5 19h4l10-10-4-4L5 15v4z"/>',
     scarica: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',

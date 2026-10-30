@@ -163,6 +163,11 @@
       <Icona nome={compensoVisibile ? 'occhio-no' : 'occhio'} />
       <span class="sr">{compensoVisibile ? 'Nascondi il compenso' : 'Mostra il compenso'}</span>
     </button>
+    <a class="storico focus-inset" href="#/storico">
+      <Icona nome="grafico" />
+      <span class="storico-txt">Storico<span class="muted small">Mese per mese e totale dell'anno</span></span>
+      <Icona nome="dx" />
+    </a>
   </div>
 
   <div class="card tab">
@@ -209,6 +214,11 @@
   .compenso-lbl { font-size: var(--text-xs); color: var(--on-ink-faint); }
   .compenso .m { font-weight: 600; }
   .compenso :global(.ic) { color: var(--on-ink-muted); }
+  .storico { display: flex; align-items: center; gap: var(--space-10); min-height: 44px; margin: calc(var(--space-4) * -1) 0 calc(var(--space-6) * -1); padding-top: var(--space-10); border-top: 1px solid var(--line-soft); color: var(--ink); text-decoration: none; }
+  .storico > :global(.ic:first-child) { color: var(--cloro); }
+  .storico > :global(.ic:last-child) { width: 18px; height: 18px; color: var(--chevron); }
+  .storico-txt { display: flex; flex-direction: column; flex: 1; font-weight: 600; }
+  .storico-txt .small { font-weight: 400; }
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .tab { overflow: hidden; }
   .tr { display: grid; grid-template-columns: 30px 36px 1fr 52px; align-items: center; gap: var(--space-6); min-height: 44px; padding: 0 var(--space-14); border-top: 1px solid var(--line-soft); font-size: var(--text-md); color: var(--ink); text-decoration: none; }

@@ -1,9 +1,10 @@
-import { get, set } from 'idb-keyval';
+import { get, set, del } from 'idb-keyval';
 import { IMPOSTAZIONI_DEFAULT, completaImpostazioni, ordinaTurni, type Impostazioni, type Turno } from './model';
 import type { ScelteOrari } from './turni/importa';
 import { leggiModello } from './store';
 import { caricaModello } from './foglio/modello';
 import { nomeCollaboratore } from './foglio/genera';
+import type { Archivio } from './storico';
 
 /**
  * Stato dell'app, condiviso tra le schermate e salvato sul telefono (IndexedDB).
@@ -23,6 +24,7 @@ const K = {
   scelte: 'scelte-orari',
   import: 'ultima-importazione',
   esclusi: 'turni-esclusi',
+  archivio: 'archivio-fogli-ore',
 };
 
 class Dati {
@@ -36,6 +38,8 @@ class Dati {
   ultimaImportazione = $state<UltimaImportazione | undefined>();
   /** Turni del foglio che hai tolto in importazione (chiave data|area): gli aggiornamenti automatici non li rimettono */
   esclusi = $state<string[]>([]);
+  /** Fogli ore dei mesi prima di ClockWork, per lo Storico */
+  archivio = $state<Archivio | undefined>();
   erroreSalvataggio = $state('');
 
   private coda: Promise<unknown> = Promise.resolve();
@@ -47,12 +51,13 @@ class Dati {
   }
 
   async carica() {
-    const [turni, imp, scelte, ultima, esclusi] = await Promise.all([
+    const [turni, imp, scelte, ultima, esclusi, archivio] = await Promise.all([
       get<Turno[]>(K.turni),
       get<Impostazioni>(K.impostazioni),
       get<ScelteOrari>(K.scelte),
       get<UltimaImportazione>(K.import),
       get<string[]>(K.esclusi),
+      get<Archivio>(K.archivio),
     ]);
     this.turni = (turni ?? []).sort(ordinaTurni);
     this.impostazioni = completaImpostazioni(imp);
@@ -68,6 +73,7 @@ class Dati {
       .catch(() => (this.erroreModello = 'Non riesco a caricare il modello del foglio ore: riprova con la connessione attiva.'));
     this.ultimaImportazione = ultima;
     this.esclusi = esclusi ?? [];
+    this.archivio = archivio;
     this.pronto = true;
   }
 
@@ -122,6 +128,13 @@ class Dati {
   setUltimaImportazione(u: UltimaImportazione) {
     this.ultimaImportazione = u;
     return this.salva(K.import, u);
+  }
+
+  /** Archivio dei fogli ore: undefined lo toglie */
+  async setArchivio(a: Archivio | undefined) {
+    this.archivio = a;
+    if (a) await this.salva(K.archivio, a);
+    else await del(K.archivio).catch(() => undefined);
   }
 
   turniDelMese(year: number, month: number): Turno[] {
