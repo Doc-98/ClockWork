@@ -1,6 +1,6 @@
 import { get, set, del } from 'idb-keyval';
 import { IMPOSTAZIONI_DEFAULT, completaImpostazioni, ordinaTurni, type Impostazioni, type Turno } from './model';
-import type { ScelteOrari } from './turni/importa';
+import { leggiFileTurni, tuttiITurni, chiCeraPrima, chiaveTurno, type ScelteOrari } from './turni/importa';
 import { leggiModello } from './store';
 import { caricaModello } from './foglio/modello';
 import { nomeCollaboratore } from './foglio/genera';
@@ -27,6 +27,7 @@ const K = {
   archivio: 'archivio-fogli-ore',
   avvisiChiusi: 'avvisi-chiusi',
   oreManuali: 'ore-mesi-a-mano',
+  chiCeraPrima: 'chi-cera-prima',
 };
 
 class Dati {
@@ -46,6 +47,11 @@ class Dati {
   avvisiChiusi = $state<string[]>([]);
   /** Ore totali inserite a mano per i mesi senza turni o con il foglio ore sbagliato */
   oreManuali = $state<OreManuali>({});
+  /**
+   * Turni comparsi o cambiati nel foglio a mese iniziato: chi li aveva nella versione precedente
+   * (chiave data|area → nome). Serve a proporre «sostituisci Greta?» in Rivedi.
+   */
+  chiCeraPrima = $state<Record<string, string>>({});
   erroreSalvataggio = $state('');
 
   private coda: Promise<unknown> = Promise.resolve();
@@ -57,7 +63,7 @@ class Dati {
   }
 
   async carica() {
-    const [turni, imp, scelte, ultima, esclusi, archivio, avvisiChiusi, oreManuali] = await Promise.all([
+    const [turni, imp, scelte, ultima, esclusi, archivio, avvisiChiusi, oreManuali, prima] = await Promise.all([
       get<Turno[]>(K.turni),
       get<Impostazioni>(K.impostazioni),
       get<ScelteOrari>(K.scelte),
@@ -66,6 +72,7 @@ class Dati {
       get<Archivio>(K.archivio),
       get<string[]>(K.avvisiChiusi),
       get<OreManuali>(K.oreManuali),
+      get<Record<string, string>>(K.chiCeraPrima),
     ]);
     this.turni = (turni ?? []).sort(ordinaTurni);
     this.impostazioni = completaImpostazioni(imp);
@@ -84,6 +91,7 @@ class Dati {
     this.archivio = archivio;
     this.avvisiChiusi = avvisiChiusi ?? [];
     this.oreManuali = oreManuali ?? {};
+    this.chiCeraPrima = prima ?? {};
     this.pronto = true;
   }
 
@@ -135,9 +143,34 @@ class Dati {
     return this.salva(K.esclusi, this.esclusi);
   }
 
-  setUltimaImportazione(u: UltimaImportazione) {
+  async setUltimaImportazione(u: UltimaImportazione) {
+    const vecchio = this.ultimaImportazione?.bytes;
+    if (vecchio && vecchio !== u.bytes) await this.annotaChiCeraPrima(vecchio, u.bytes);
     this.ultimaImportazione = u;
     return this.salva(K.import, u);
+  }
+
+  /** Confronta il foglio nuovo con quello di prima: per i tuoi turni comparsi o cambiati, chi c'era al tuo posto */
+  private async annotaChiCeraPrima(vecchio: Uint8Array, nuovo: Uint8Array) {
+    try {
+      const alias = this.impostazioni.alias;
+      const prima = tuttiITurni(vecchio);
+      const mieiPrima = new Map(leggiFileTurni(vecchio, alias).mesi.flatMap((m) => m.miei).map((t) => [chiaveTurno(t), t]));
+      const scorso = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1);
+      const dal = `${scorso.getFullYear()}-${String(scorso.getMonth() + 1).padStart(2, '0')}`; // dal mese scorso in avanti
+      const next: Record<string, string> = Object.fromEntries(Object.entries(this.chiCeraPrima).filter(([k]) => k.slice(0, 7) >= dal));
+      for (const t of leggiFileTurni(nuovo, alias).mesi.flatMap((m) => m.miei)) {
+        const k = chiaveTurno(t);
+        const p = mieiPrima.get(k);
+        if (next[k] || (p && p.inizio === t.inizio && p.fine === t.fine)) continue;
+        const chi = chiCeraPrima(prima, t, alias);
+        if (chi) next[k] = chi;
+      }
+      this.chiCeraPrima = next;
+      await this.salva(K.chiCeraPrima, next);
+    } catch {
+      // Un file che non si legge non deve bloccare l'aggiornamento
+    }
   }
 
   /** Archivio dei fogli ore: undefined lo toglie */

@@ -26,8 +26,10 @@
   let sost = $state(esistente ? !!esistente.sostituisce : r.tipo === 'sost');
   let sostituisce = $state(esistente?.sostituisce ?? '');
   let nota = $state(esistente?.nota ?? '');
-  // La nota automatica vale solo per i turni nuovi: quella di un turno salvato non cambia da sola
-  let notaToccata = $state(!!esistente);
+  // La nota automatica segue la sostituzione finché non la scrivi tu: per un turno salvato,
+  // solo se era vuota o era ancora quella automatica
+  const notaEraAuto = !!esistente?.sostituisce && esistente.nota === notaSostituzione(esistente.sostituisce, esistente.area);
+  let notaToccata = $state(!!esistente?.nota && !notaEraAuto);
   let annullato = $state(!!esistente?.annullato);
   let nomeTurno = $state(esistente?.nome ?? '');
   let promemoriaPropri = $state(!!esistente?.promemoria);
@@ -85,7 +87,7 @@
     promemoriaPropri = !promemoriaPropri;
   }
 
-  const titolo = nuovo ? (r.tipo === 'sost' ? 'Nuova sostituzione' : 'Nuovo turno') : esistente!.origine === 'import' ? 'Turno dal foglio' : esistente!.sostituisce ? 'Sostituzione' : 'Turno';
+  const titolo = nuovo ? (r.tipo === 'sost' ? 'Nuova sostituzione' : 'Nuovo turno') : esistente!.sostituisce ? 'Sostituzione' : esistente!.origine === 'import' ? 'Turno dal foglio' : 'Turno';
 
   // «Salva» si accende solo quando c'è qualcosa da salvare (e di valido)
   const statoForm = () => JSON.stringify({ data, area, postazione, inizio, fine, sost, sostituisce: sostituisce.trim(), nota: nota.trim(), annullato, nomeTurno: nomeTurno.trim(), promemoriaPropri, promemoria });
@@ -143,15 +145,16 @@
 
   {#if esistente?.origine === 'import'}
     <p class="muted small nomargin">
-      Viene dal foglio turni. Se lo modifichi o lo annulli, gli aggiornamenti dal foglio lo lasceranno com'è.
+      Viene dal foglio turni. Se ne cambi giorno, area o orario o lo annulli, gli aggiornamenti dal foglio lo lasceranno com'è.
     </p>
   {/if}
 
-  {#if nuovo || esistente?.origine === 'manuale'}
-    <div class="seg tipo" role="group" aria-label="Tipo">
-      <button aria-pressed={!sost} onclick={() => (sost = false)}>Turno</button>
-      <button aria-pressed={sost} onclick={() => (sost = true)}>Sostituzione</button>
-    </div>
+  <div class="seg tipo" role="group" aria-label="Tipo">
+    <button aria-pressed={!sost} onclick={() => (sost = false)}>Turno</button>
+    <button aria-pressed={sost} onclick={() => (sost = true)}>Sostituzione</button>
+  </div>
+  {#if esistente?.origine === 'import' && sost && !esistente.sostituisce}
+    <p class="muted small nomargin">Lo segno come sostituzione e lo conto così nel foglio ore e nello Storico. Il foglio turni potrà continuare ad aggiornarne l'orario.</p>
   {/if}
 
   <label class="field">

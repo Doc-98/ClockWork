@@ -1,6 +1,6 @@
-import { leggiFoglioTurni, meseDalNomeFoglio, turniDi, type TurnoLetto } from './parse';
+import { leggiFoglioTurni, meseDalNomeFoglio, normalizzaNome, turniDi, type TurnoLetto } from './parse';
 import { readWorkbook } from '../xlsx/read';
-import { nuovoId, type Turno } from '../model';
+import { nuovoId, notaSostituzione, type Turno } from '../model';
 
 /** Scelta dell'utente per un orario doppio, ricordata tra un'importazione e l'altra. */
 export interface SceltaOrario {
@@ -128,6 +128,7 @@ export function applicaImport(esistenti: Turno[], confermati: TurnoLetto[], year
         origine: 'import',
         presa: l.presa || undefined,
         // ciò che hai aggiunto tu a un turno del foglio sopravvive alle nuove importazioni
+        sostituisce: prima?.sostituisce,
         nome: prima?.nome,
         nota: prima?.nota,
         promemoria: prima?.promemoria,
@@ -229,6 +230,11 @@ export function pianoAggiornamento(
     } else if (rimossi) {
       azione = 'rivedi';
       motivo = rimossi === 1 ? 'un turno non è più nel foglio' : `${rimossi} turni non sono più nel foglio`;
+    } else if ((nuovi || cambiati) && giaImportato) {
+      // A mese iniziato un turno che compare o cambia è spesso una sostituzione: lo chiedo
+      azione = 'rivedi';
+      const n = nuovi + cambiati;
+      motivo = n === 1 ? 'un turno nuovo o cambiato, è una sostituzione?' : `${n} turni nuovi o cambiati, sono sostituzioni?`;
     } else if (nuovi || cambiati) azione = 'applica';
     out.push({ nome: m.nome, year: m.year, month: m.month, azione, nuovi, cambiati, rimossi, motivo, confermati });
   }
@@ -243,6 +249,8 @@ export interface Revisione {
   tieniVecchio: Set<string>;
   /** Turni spariti dal foglio che vuoi tenere */
   tieni: Set<string>;
+  /** Turni nuovi o cambiati e la risposta a «è una sostituzione?»: chiave → chi sostituisci ('' = no) */
+  sostituzioni?: Map<string, string>;
 }
 
 /**
@@ -255,5 +263,38 @@ export function applicaRevisione(esistenti: Turno[], letti: TurnoLetto[], year: 
     t.origine === 'import' && inMese(t.data, year, month) && daProteggere.has(chiaveTurno(t)) ? { ...t, modificato: true } : t,
   );
   const confermati = letti.filter((l) => !r.escludi.has(chiaveTurno(l)) && !r.tieniVecchio.has(chiaveTurno(l)));
-  return applicaImport(marcati, confermati, year, month);
+  const dopo = applicaImport(marcati, confermati, year, month);
+  if (!r.sostituzioni?.size) return dopo;
+  return dopo.map((t) => {
+    const chi = t.origine === 'import' && inMese(t.data, year, month) ? r.sostituzioni!.get(chiaveTurno(t))?.trim() : undefined;
+    if (chi === undefined) return t;
+    if (!chi) {
+      // «Non è una sostituzione»: tolgo il segno e la nota automatica, se era quella
+      if (!t.sostituisce) return t;
+      const auto = t.nota === notaSostituzione(t.sostituisce, t.area);
+      return { ...t, sostituisce: undefined, nota: auto ? undefined : t.nota };
+    }
+    // La nota automatica per la colonna R, se non ne avevi già scritta una
+    return { ...t, sostituisce: chi, nota: t.nota || notaSostituzione(chi, t.area) };
+  });
+}
+
+/**
+ * Chi aveva questo turno nella versione precedente del foglio: se oggi ci sei tu e prima c'era
+ * un collega, è quasi certamente una sostituzione. Stesso giorno, area e postazione; a parità,
+ * vince chi aveva lo stesso orario.
+ */
+export function chiCeraPrima(precedenti: TurnoLetto[], t: Pick<TurnoLetto, 'data' | 'area' | 'postazione' | 'inizio' | 'fine'>, alias: string[]): string | undefined {
+  const miei = new Set(alias.map(normalizzaNome));
+  const candidati = precedenti.filter(
+    (p) => p.data === t.data && p.area === t.area && (p.postazione ?? null) === (t.postazione ?? null) && !p.prova && !miei.has(normalizzaNome(p.nome)),
+  );
+  return (candidati.find((p) => p.inizio === t.inizio && p.fine === t.fine) ?? candidati[0])?.nome;
+}
+
+/** Tutti i turni (di chiunque) di un file dei turni, per cercare chi c'era prima */
+export function tuttiITurni(bytes: Uint8Array): TurnoLetto[] {
+  return readWorkbook(bytes)
+    .filter((s) => meseDalNomeFoglio(s.name))
+    .flatMap((s) => leggiFoglioTurni(s).turni);
 }

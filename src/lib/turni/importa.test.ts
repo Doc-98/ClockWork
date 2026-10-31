@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
-import { confronta, applicaImport, applicaRevisione, casiDoppi, applicaScelte, leggiFileTurni, chiaveDoppio, chiaveTurno, pianoAggiornamento } from './importa';
+import { confronta, applicaImport, applicaRevisione, casiDoppi, applicaScelte, leggiFileTurni, chiaveDoppio, chiaveTurno, pianoAggiornamento, chiCeraPrima, type FoglioTurniLetto } from './importa';
 import type { TurnoLetto } from './parse';
 import type { Turno } from '../model';
 import { vociDaTurni } from '../foglio/daTurni';
@@ -130,6 +130,46 @@ describe('applicaRevisione', () => {
   });
 });
 
+describe('sostituzioni dal foglio', () => {
+  const oggi = new Date(2026, 9, 20);
+  const mese = (miei: TurnoLetto[], turni: TurnoLetto[] = miei): FoglioTurniLetto => ({ mesi: [{ nome: 'Ottobre 26', year: 2026, month: 10, turni, miei, avvisi: [] }] });
+  const base = [letto('2026-10-05', 'piccoli', 900, 1110), letto('2026-10-07', 'piccoli', 900, 1110)];
+
+  it('prima importazione del mese: niente domande, si applica', () => {
+    const p = pianoAggiornamento(mese(base), [], {}, [], oggi)[0];
+    expect(p).toMatchObject({ azione: 'applica', nuovi: 2 });
+  });
+  it('a mese iniziato, un turno nuovo va rivisto: può essere una sostituzione', () => {
+    const turni = applicaImport([], base, 2026, 10);
+    const p = pianoAggiornamento(mese([...base, letto('2026-10-17', 'maschile', 840, 1110)]), turni, {}, [], oggi)[0];
+    expect(p).toMatchObject({ azione: 'rivedi', nuovi: 1 });
+    expect(p.motivo).toBe('un turno nuovo o cambiato, è una sostituzione?');
+  });
+  it('chi c’era prima nello stesso posto: proposto come sostituito', () => {
+    const prima = [
+      letto('2026-10-17', 'maschile', 840, 1110, { nome: 'Greta', postazione: 2 }),
+      letto('2026-10-17', 'maschile', 840, 1110, { nome: 'Daniel', postazione: 1 }),
+      letto('2026-10-17', 'maschile', 840, 1110, { nome: 'Vincenzo', postazione: 3 }),
+    ];
+    expect(chiCeraPrima(prima, letto('2026-10-17', 'maschile', 840, 1110, { postazione: 2 }), ['Vincenzo'])).toBe('Greta');
+    expect(chiCeraPrima(prima, letto('2026-10-17', 'maschile', 840, 1110, { postazione: 3 }), ['Vincenzo'])).toBeUndefined();
+    expect(chiCeraPrima(prima, letto('2026-10-18', 'maschile', 840, 1110, { postazione: 2 }), ['Vincenzo'])).toBeUndefined();
+  });
+  it('confermando come sostituzione: collega e nota automatica, e restano agli aggiornamenti dopo', () => {
+    const turni = applicaImport([], base, 2026, 10);
+    const nuovo = letto('2026-10-17', 'maschile', 840, 1110, { postazione: 2 });
+    const r = applicaRevisione(turni, [...base, nuovo], 2026, 10, {
+      escludi: new Set(), tieniVecchio: new Set(), tieni: new Set(), sostituzioni: new Map([['2026-10-17|maschile', 'Greta']]),
+    });
+    const s = r.find((t) => t.data === '2026-10-17')!;
+    expect(s).toMatchObject({ origine: 'import', sostituisce: 'Greta', nota: 'sost greta spogl maschi' });
+    expect(s.modificato).toBeUndefined();
+    // il foglio cambia l'orario della sostituzione: si aggiorna e resta una sostituzione
+    const dopo = applicaImport(r, [...base, { ...nuovo, fine: 1140 }], 2026, 10).find((t) => t.data === '2026-10-17')!;
+    expect(dopo).toMatchObject({ fine: 1140, sostituisce: 'Greta', nota: 'sost greta spogl maschi', id: s.id });
+  });
+});
+
 const FILE = 'fixtures/private/turni.xlsx';
 describe.skipIf(!existsSync(FILE))('file reale', () => {
   it('trova i mesi e i turni doppi', () => {
@@ -162,10 +202,10 @@ describe.skipIf(!existsSync(FILE))('file reale', () => {
     expect(piano.filter((m) => m.azione !== 'nessuna')).toEqual([]);
   });
 
-  it('aggiornamento: orario cambiato nel foglio → applicato', () => {
+  it('aggiornamento: orario cambiato a mese iniziato → chiede se è una sostituzione', () => {
     const turni = importaMese([], 'Ottobre 26').map((t, i) => (i === 0 ? { ...t, fine: t.fine - 30 } : t));
     const ott = pianoAggiornamento(f(), turni, {}, [], oggi).find((m) => m.nome === 'Ottobre 26')!;
-    expect(ott).toMatchObject({ azione: 'applica', cambiati: 1 });
+    expect(ott).toMatchObject({ azione: 'rivedi', cambiati: 1 });
   });
 
   it('aggiornamento: turno sparito dal foglio → da rivedere', () => {

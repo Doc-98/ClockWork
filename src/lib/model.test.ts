@@ -11,6 +11,9 @@ describe('segnaModifica', () => {
   it('nota e nome non lo bloccano: il foglio può ancora aggiornarlo', () => {
     expect(segnaModifica(t, { ...t, nota: 'ciao', nome: 'Leone' }).modificato).toBeUndefined();
   });
+  it('segnarlo come sostituzione non lo blocca', () => {
+    expect(segnaModifica(t, { ...t, sostituisce: 'Greta', nota: 'sost greta spogl maschi' }).modificato).toBeUndefined();
+  });
   it('i turni aggiunti a mano non cambiano', () => {
     const m = { ...t, origine: 'manuale' as const };
     expect(segnaModifica(m, { ...m, fine: 1185 }).modificato).toBeUndefined();

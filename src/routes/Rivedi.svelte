@@ -68,17 +68,42 @@
   const nCambiamenti = $derived((primaImportazione ? 0 : nuovi.length) + cambiati.length + rimossi.length);
   let mostraAltri = $state(false);
 
+  // «È una sostituzione?» per i turni comparsi o cambiati a mese iniziato.
+  // Proposta: chi aveva quel posto nella versione precedente del foglio, o la sostituzione già segnata.
+  let risposte = $state<Record<string, { si: boolean; chi: string }>>({});
+  function propostaSost(k: string, precedente?: { sostituisce?: string }) {
+    const chi = precedente?.sostituisce ?? dati.chiCeraPrima[k] ?? '';
+    return { si: !!chi, chi };
+  }
+  const risposta = (k: string, precedente?: { sostituisce?: string }) => risposte[k] ?? propostaSost(k, precedente);
+  const imposta = (k: string, precedente: { sostituisce?: string } | undefined, v: Partial<{ si: boolean; chi: string }>) =>
+    (risposte = { ...risposte, [k]: { ...risposta(k, precedente), ...v } });
+  // Le righe a cui si risponde: turni nuovi o cambiati che stai applicando
+  const domande = $derived(
+    primaImportazione
+      ? []
+      : [
+          ...cambiati.filter((r) => !tieniVecchio.has(chiaveTurno(r.letto))),
+          ...nuovi.filter((r) => !escludi.has(chiaveTurno(r.letto))),
+        ].map((r) => ({ k: chiaveTurno(r.letto), precedente: r.precedente })),
+  );
+  const sostituzioni = $derived(new Map(domande.map(({ k, precedente }) => {
+    const v = risposta(k, precedente);
+    return [k, v.si ? v.chi.trim() : ''] as [string, string];
+  })));
+  const senzaNome = $derived(domande.filter(({ k, precedente }) => risposta(k, precedente).si && !risposta(k, precedente).chi.trim()).length);
+
   // Come sarà il mese confermando adesso
   const risultato = $derived(
-    mese ? applicaRevisione(dati.turni, risolti, mese.year, mese.month, { escludi, tieniVecchio, tieni }).filter((t) => t.data.startsWith(`${mese.year}-${String(mese.month).padStart(2, '0')}-`) && !t.annullato) : [],
+    mese ? applicaRevisione(dati.turni, risolti, mese.year, mese.month, { escludi, tieniVecchio, tieni, sostituzioni }).filter((t) => t.data.startsWith(`${mese.year}-${String(mese.month).padStart(2, '0')}-`) && !t.annullato) : [],
   );
   const ore = $derived(Math.round(risultato.reduce((s, t) => s + (t.fine - t.inizio) / 60, 0) * 100) / 100);
 
   let lavoro = $state(false);
   async function conferma() {
-    if (!mese || daDecidere.length) return;
+    if (!mese || daDecidere.length || senzaNome) return;
     lavoro = true;
-    await dati.setTurni(applicaRevisione(dati.turni, risolti, mese.year, mese.month, { escludi, tieniVecchio, tieni }));
+    await dati.setTurni(applicaRevisione(dati.turni, risolti, mese.year, mese.month, { escludi, tieniVecchio, tieni, sostituzioni }));
     const daSalvare = { ...dati.scelte };
     for (const c of casi) daSalvare[c.chiave] = scelte[c.chiave];
     await dati.setScelte(daSalvare);
@@ -100,6 +125,25 @@
     return d.length === 1 ? `${GG[dataDa(date[0]).getDay()]} ${d[0]}` : `${d.slice(0, -1).join(', ')} e ${d.at(-1)}`;
   };
 </script>
+
+{#snippet domanda(k: string, precedente: { sostituisce?: string } | undefined)}
+  {@const v = risposta(k, precedente)}
+  {@const prima = dati.chiCeraPrima[k]}
+  <div class="domanda">
+    <span class="lbl" id="d-{k}">È una sostituzione?</span>
+    <div class="seg due-seg" role="group" aria-labelledby="d-{k}">
+      <button aria-pressed={!v.si} onclick={() => imposta(k, precedente, { si: false })}>No, è mio</button>
+      <button aria-pressed={v.si} onclick={() => imposta(k, precedente, { si: true })}>Sì</button>
+    </div>
+    {#if v.si}
+      <input class="inp" value={v.chi} aria-label="Chi sostituisci" placeholder="Chi sostituisci"
+        oninput={(e) => imposta(k, precedente, { chi: (e.currentTarget as HTMLInputElement).value })} />
+    {/if}
+    {#if prima}
+      <span class="muted small">Prima nel foglio qui c'era {prima}.</span>
+    {/if}
+  </div>
+{/snippet}
 
 <section class="page">
   <header class="bar">
@@ -184,14 +228,17 @@
           {#each cambiati as r (chiaveTurno(r.letto))}
             {@const k = chiaveTurno(r.letto)}
             {@const applica = !tieniVecchio.has(k)}
-            <label class="camb" class:scartato={!applica}>
-              <input type="checkbox" checked={applica} aria-label="Usa il nuovo orario, {giorno(r.letto.data)}" onchange={() => (tieniVecchio = togli(tieniVecchio, k))} />
-              <span class="txt">
-                <span class="top"><span class="gg">{giorno(r.letto.data)}</span><span class="tag t-{r.letto.area}">{etichetta(r.letto)}</span></span>
-                <span class="orari"><span class="m vecchio">{orario(r.precedente!)}</span><Icona nome="freccia" class="freccia" /><span class="m nuovo">{orario(r.letto)}</span></span>
-                <span class="cosa">{applica ? 'Orario cambiato: uso il nuovo' : 'Orario cambiato: tengo il vecchio'}</span>
-              </span>
-            </label>
+            <div class="blocco">
+              <label class="camb" class:scartato={!applica}>
+                <input type="checkbox" checked={applica} aria-label="Usa il nuovo orario, {giorno(r.letto.data)}" onchange={() => (tieniVecchio = togli(tieniVecchio, k))} />
+                <span class="txt">
+                  <span class="top"><span class="gg">{giorno(r.letto.data)}</span><span class="tag t-{r.letto.area}">{etichetta(r.letto)}</span></span>
+                  <span class="orari"><span class="m vecchio">{orario(r.precedente!)}</span><Icona nome="freccia" class="freccia" /><span class="m nuovo">{orario(r.letto)}</span></span>
+                  <span class="cosa">{applica ? 'Orario cambiato: uso il nuovo' : 'Orario cambiato: tengo il vecchio'}</span>
+                </span>
+              </label>
+              {#if applica}{@render domanda(k, r.precedente)}{/if}
+            </div>
           {/each}
           {#each rimossi as t (t.id)}
             {@const k = chiaveTurno(t)}
@@ -208,14 +255,17 @@
           {#each nuovi as r (chiaveTurno(r.letto))}
             {@const k = chiaveTurno(r.letto)}
             {@const aggiungi = !escludi.has(k)}
-            <label class="camb" class:scartato-nuovo={!aggiungi}>
-              <input type="checkbox" checked={aggiungi} aria-label="Aggiungi {giorno(r.letto.data)}" onchange={() => (escludi = togli(escludi, k))} />
-              <span class="txt">
-                <span class="top"><span class="gg">{giorno(r.letto.data)}</span><span class="tag t-{r.letto.area}">{etichetta(r.letto)}</span></span>
-                <span class="orari"><span class="m nuovo">{orario(r.letto)}</span></span>
-                <span class="cosa">{aggiungi ? 'Nuovo nel foglio: lo aggiungo' : 'Nuovo nel foglio: non lo aggiungo'}</span>
-              </span>
-            </label>
+            <div class="blocco">
+              <label class="camb" class:scartato-nuovo={!aggiungi}>
+                <input type="checkbox" checked={aggiungi} aria-label="Aggiungi {giorno(r.letto.data)}" onchange={() => (escludi = togli(escludi, k))} />
+                <span class="txt">
+                  <span class="top"><span class="gg">{giorno(r.letto.data)}</span><span class="tag t-{r.letto.area}">{etichetta(r.letto)}</span></span>
+                  <span class="orari"><span class="m nuovo">{orario(r.letto)}</span></span>
+                  <span class="cosa">{aggiungi ? 'Nuovo nel foglio: lo aggiungo' : 'Nuovo nel foglio: non lo aggiungo'}</span>
+                </span>
+              </label>
+              {#if aggiungi}{@render domanda(k, undefined)}{/if}
+            </div>
           {/each}
         </div>
       </section>
@@ -242,11 +292,12 @@
         {confronto.protetti.length === 1 ? "1 turno che hai modificato resta com'è." : `${confronto.protetti.length} turni che hai modificato restano come sono.`}
       </p>
     {/if}
-    <p class="muted small nomargin">Sostituzioni e turni aggiunti a mano restano come sono: il foglio turni non li contiene.</p>
+    <p class="muted small nomargin">I turni aggiunti a mano restano come sono: il foglio turni non li contiene. Un turno del foglio segnato come sostituzione resta tale anche se il foglio ne cambia l'orario.</p>
 
     <div class="fondo">
-      {#if daDecidere.length}<span class="muted small">Scegli {daDecidere.length === 1 ? "l'orario doppio" : 'gli orari doppi'} per confermare.</span>{/if}
-      <button class="btn btn-primary" disabled={lavoro || daDecidere.length > 0} onclick={conferma}>Conferma {risultato.length} turni di {MESI[mese.month - 1].toLowerCase()}</button>
+      {#if daDecidere.length}<span class="muted small">Scegli {daDecidere.length === 1 ? "l'orario doppio" : 'gli orari doppi'} per confermare.</span>
+      {:else if senzaNome}<span class="muted small">Scrivi chi sostituisci per confermare.</span>{/if}
+      <button class="btn btn-primary" disabled={lavoro || daDecidere.length > 0 || senzaNome > 0} onclick={conferma}>Conferma {risultato.length} turni di {MESI[mese.month - 1].toLowerCase()}</button>
     </div>
   {/if}
 </section>
@@ -260,6 +311,11 @@
   .testa { display: flex; flex-direction: column; gap: var(--space-4); }
   .tit { font-weight: 600; }
   .due-seg { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .blocco { border-top: 1px solid var(--line-soft); }
+  .blocco:first-child { border-top: none; }
+  .blocco .camb { border-top: none; }
+  .domanda { display: flex; flex-direction: column; gap: var(--space-8); margin: 0 var(--space-14) var(--space-12) calc(var(--space-14) + 22px + var(--space-12)); padding: var(--space-10) var(--space-12); border-radius: var(--radius-md); background: var(--carta); }
+  .domanda .inp { background: var(--surface); }
   .camb { display: flex; align-items: flex-start; gap: var(--space-12); padding: var(--space-12) var(--space-14); border-top: 1px solid var(--line-soft); cursor: pointer; }
   .camb:first-child { border-top: none; }
   .camb.fisso { cursor: default; align-items: center; }

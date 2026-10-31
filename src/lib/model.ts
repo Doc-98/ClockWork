@@ -160,14 +160,15 @@ export function notaSostituzione(nome: string, area: Area): string {
 }
 
 /**
- * Un turno del foglio che hai cambiato (orario, giorno, area, annullato, sostituzione):
+ * Un turno del foglio che hai cambiato (orario, giorno, area, annullato):
+ * segnarlo come sostituzione non conta, perché il foglio può continuare ad aggiornarne l'orario.
  * da qui in poi gli aggiornamenti dal foglio lo lasciano com'è.
  */
 export function segnaModifica(prima: Turno, dopo: Turno): Turno {
   if (prima.origine !== 'import') return dopo;
   const cambiato =
     dopo.data !== prima.data || dopo.area !== prima.area || dopo.inizio !== prima.inizio || dopo.fine !== prima.fine ||
-    !!dopo.annullato !== !!prima.annullato || dopo.sostituisce !== prima.sostituisce;
+    !!dopo.annullato !== !!prima.annullato;
   return cambiato ? { ...dopo, modificato: true } : dopo;
 }
 
