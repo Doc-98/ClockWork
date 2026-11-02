@@ -1,6 +1,6 @@
 <script lang="ts">
   import { dati } from '../lib/dati.svelte';
-  import { breveArea, dataDa, hhmm, oreDi, type Turno } from '../lib/model';
+  import { etichettaTurno, conAree, dataDa, hhmm, oreDi, type Turno } from '../lib/model';
   import { formatOre } from '../lib/ore';
   import Icona from './Icona.svelte';
 
@@ -8,7 +8,7 @@
   const GG = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
   const d = $derived(dataDa(turno.data));
   const etichetta = $derived(
-    turno.nome?.trim() || (turno.sostituisce ? `Sost. ${turno.sostituisce}` : `${breveArea(turno.area, dati.impostazioni)}${turno.postazione ? ' · P' + turno.postazione : ''}${turno.presa ? ' · presa' : ''}`),
+    turno.nome?.trim() || (turno.sostituisce ? `Sost. ${turno.sostituisce}` : `${etichettaTurno(turno, dati.impostazioni)}${turno.postazione ? ' · P' + turno.postazione : ''}${turno.presa ? ' · presa' : ''}`),
   );
 </script>
 
@@ -18,7 +18,7 @@
   {/if}
   <div class="centro">
     <span class="m ora">{hhmm(turno.inizio)}–{hhmm(turno.fine)}</span>
-    <span class="tag t-{turno.area}">{etichetta}</span>
+    <span class="tag t-{conAree(turno) ? turno.area : 'altro'}">{etichetta}</span>
   </div>
   <div class="m ore">{turno.annullato ? 'annullato' : `${formatOre(oreDi(turno))} h`}</div>
   <Icona nome="dx" class="chev" />

@@ -2,10 +2,11 @@
   import { dati } from '../lib/dati.svelte';
   import { router } from '../lib/router.svelte';
   import { scaricaFile } from '../lib/foglio/condividi';
-  import { completaImpostazioni, ordinaTurni, type Turno } from '../lib/model';
+  import { completaImpostazioni, ordinaTurni, nomeMansione, MANSIONE_ASSISTENTE, type Mansione, type Profilo, type Turno } from '../lib/model';
   import { formatEuro } from '../lib/ore';
   import Icona from '../components/Icona.svelte';
   import CardCalendario from '../components/CardCalendario.svelte';
+  import EditorMansioni from '../components/EditorMansioni.svelte';
   import { gcal, NOME_CALENDARIO } from '../lib/gcal/stato.svelte';
   import { fonte } from '../lib/turni/fonte.svelte';
   import { tema, type SceltaTema } from '../lib/tema.svelte';
@@ -33,13 +34,23 @@
     aperta = undefined;
   }
 
-  // Compenso orario
-  let tariffa = $state(String(dati.impostazioni.tariffa).replace('.', ','));
-  const tariffaNum = $derived(Number(tariffa.replace(',', '.')));
-  const tariffaCambiata = $derived(tariffa.trim() !== '' && tariffaNum >= 0 && tariffaNum !== dati.impostazioni.tariffa);
-  async function salvaTariffa() {
-    await dati.setImpostazioni({ ...dati.impostazioni, tariffa: tariffaNum });
-    aperta = undefined;
+  // Mansioni e tariffe
+  const testoMansioni = $derived(
+    dati.impostazioni.mansioni.length === 1
+      ? `${formatEuro(dati.impostazioni.mansioni[0].tariffa)}/h · ${nomeMansione(dati.impostazioni.mansioni[0].col, dati.impostazioni)}`
+      : `${dati.impostazioni.mansioni.length} mansioni · tariffe solo per te`,
+  );
+  const salvaMansioni = (mansioni: Mansione[]) => dati.setImpostazioni({ ...dati.impostazioni, mansioni });
+
+  // Assistente o istruttore: cosa ti serve dell'app
+  function setProfilo(profilo: Profilo) {
+    const imp = { ...dati.impostazioni, profilo };
+    if (profilo === 'assistente') {
+      // Gli assistenti prendono i turni dal foglio turni: serve la mansione Q e un nome con cui cercarsi
+      if (!imp.mansioni.some((m) => m.col === MANSIONE_ASSISTENTE)) imp.mansioni = [{ col: MANSIONE_ASSISTENTE, tariffa: 9 }, ...imp.mansioni];
+      if (!imp.alias.length && imp.nome.trim()) imp.alias = [imp.nome.trim().split(/\s+/)[0]];
+    }
+    dati.setImpostazioni(imp);
   }
 
   // Casellario giudiziario: mese dello stipendio da cui la società toglie i 5 €
@@ -102,7 +113,6 @@
       if (b.oreManuali && typeof b.oreManuali === 'object') await dati.setOreManuali(b.oreManuali);
       if (b.archivio && Array.isArray(b.archivio.mesi)) await dati.setArchivio({ ...b.archivio, ignorati: b.archivio.ignorati ?? [] });
       nome = dati.impostazioni.nome;
-      tariffa = String(dati.impostazioni.tariffa).replace('.', ',');
       errore = '';
       messaggio = `Ripristinati ${turni.length} turni.`;
     } catch {
@@ -138,17 +148,25 @@
           </div>
         {/if}
       </div>
+      <div class="voce-corpo profilo">
+        <span class="lbl" id="lbl-profilo">Lavori come</span>
+        <div class="seg" style="grid-template-columns: repeat(2, minmax(0, 1fr))" role="group" aria-labelledby="lbl-profilo">
+          <button aria-pressed={dati.impostazioni.profilo === 'assistente'} onclick={() => setProfilo('assistente')}>Assistente spogliatoio</button>
+          <button aria-pressed={dati.impostazioni.profilo === 'istruttore'} onclick={() => setProfilo('istruttore')}>Istruttore</button>
+        </div>
+        <p class="muted small nomargin">{dati.impostazioni.profilo === 'assistente'
+          ? 'Prendo i tuoi turni dal foglio turni della società; quelli in più li aggiungi a mano.'
+          : 'Inserisci i tuoi turni a mano, scegliendo la mansione di ognuno. Niente foglio turni.'}</p>
+      </div>
       <div>
-        <button class="voce" aria-expanded={aperta === 'tariffa'} onclick={() => apri('tariffa')}>
+        <button class="voce" aria-expanded={aperta === 'mansioni'} onclick={() => apri('mansioni')}>
           <span class="voce-ico"><Icona nome="euro" /></span>
-          <span class="voce-txt"><span class="voce-nome">Compenso orario</span>{#if aperta !== 'tariffa'}<span class="voce-val"><span>{formatEuro(dati.impostazioni.tariffa)}/h · solo per te</span></span>{/if}</span>
+          <span class="voce-txt"><span class="voce-nome">Mansioni e tariffe</span>{#if aperta !== 'mansioni'}<span class="voce-val"><span>{testoMansioni}</span></span>{/if}</span>
           <Icona nome="giu" class="chev" />
         </button>
-        {#if aperta === 'tariffa'}
+        {#if aperta === 'mansioni'}
           <div class="voce-corpo">
-            <label class="field"><span class="lbl">Euro all'ora</span>
-              <span class="row"><input class="inp m grow" bind:value={tariffa} inputmode="decimal" /><button class="btn btn-secondary corto" disabled={!tariffaCambiata} onclick={salvaTariffa}>Salva</button></span></label>
-            <p class="muted small nomargin">Serve solo a stimare il compenso: non finisce nel foglio ore.</p>
+            <EditorMansioni mansioni={dati.impostazioni.mansioni} salva={salvaMansioni} />
           </div>
         {/if}
       </div>
@@ -174,6 +192,7 @@
     </div>
   </section>
 
+  {#if dati.impostazioni.profilo === 'assistente'}
   <section class="gruppo">
     <h2 class="lbl">Turni</h2>
     <div class="card voci">
@@ -190,6 +209,7 @@
       {/if}
     </div>
   </section>
+  {/if}
 
   <section class="gruppo">
     <h2 class="lbl">Calendario</h2>
@@ -273,4 +293,6 @@
   .voce em { font-style: italic; }
   .fondo { margin: 0; text-align: center; }
   .voce:disabled { opacity: 0.5; }
+  .profilo { display: flex; flex-direction: column; gap: var(--space-8); border-top: none; }
+  .profilo .seg button { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 </style>

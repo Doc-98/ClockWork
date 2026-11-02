@@ -1,7 +1,8 @@
 <script lang="ts">
   import { dati } from '../lib/dati.svelte';
   import { router, type Rotta } from '../lib/router.svelte';
-  import { generaFoglioOre, MESI } from '../lib/foglio/genera';
+  import { generaFoglioOre, colonnaNote, MESI } from '../lib/foglio/genera';
+  import { compensoTurni, nomeMansione, MANSIONE_ASSISTENTE } from '../lib/model';
   import { vociDaTurni } from '../lib/foglio/daTurni';
   import { condividiFile, scaricaFile, fileCondivisibile, PDF_MIME } from '../lib/foglio/condividi';
   import { formatOre, formatEuro } from '../lib/ore';
@@ -22,7 +23,7 @@
   const nSost = $derived(turniMese.filter((t) => t.sostituisce).length);
   // Casellario: 5 € tolti dallo stipendio che paga questo mese (di solito ottobre, per il lavoro di settembre)
   const detrazione = $derived(detrazioneMese(ymStr(ym), dati.impostazioni.casellario, totale));
-  const compenso = $derived(Math.max(0, totale * dati.impostazioni.tariffa - detrazione));
+  const compenso = $derived(Math.max(0, compensoTurni(turniMese, dati.impostazioni) - detrazione));
   const MESI_MIN = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
   const meseStipendio = $derived(MESI_MIN[Number(mesePagamento(ymStr(ym)).slice(5, 7)) - 1]);
   const mesiConTurni = $derived(new Set(dati.turni.map((t) => t.data.slice(0, 7))));
@@ -129,6 +130,9 @@
     }
   }
 
+  const colNote = $derived(colonnaNote(voci));
+  // Più mansioni nel mese, o una mansione che non è quella degli assistenti: ogni riga dice quale
+  const piuMansioni = $derived(new Set(voci.map((v) => v.col ?? MANSIONE_ASSISTENTE)).size > 1 || dati.impostazioni.mansioni.length > 1);
   const giornoSett = (d: number) => GG[new Date(ym.year, ym.month - 1, d).getDay()];
   const isoGiorno = (d: number) => `${ymStr(ym)}-${String(d).padStart(2, '0')}`;
   const prima = $derived(spostaYm(ym, -1));
@@ -178,12 +182,16 @@
   </div>
 
   <div class="card tab">
-    <div class="tr th"><span>Gg</span><span></span><span>Nota (col. R)</span><span class="r">Ore</span></div>
-    {#each voci as v (v.day)}
+    <div class="tr th"><span>Gg</span><span></span><span>{piuMansioni ? 'Mansione · nota' : `Nota (col. ${colNote})`}</span><span class="r">Ore</span></div>
+    {#each voci as v (`${v.day}-${v.col ?? MANSIONE_ASSISTENTE}`)}
       <a class="tr focus-inset" href={`#/mese/${ymStr(ym)}?g=${isoGiorno(v.day)}`}>
         <span class="m b">{v.day}</span>
         <span class="muted">{giornoSett(v.day)}</span>
-        <span class="nota">{v.note ?? '—'}</span>
+        {#if piuMansioni}
+          <span class="nota due-righe"><span>{nomeMansione(v.col ?? MANSIONE_ASSISTENTE, dati.impostazioni)}</span>{#if v.note}<span class="sotto">{v.note}</span>{/if}</span>
+        {:else}
+          <span class="nota">{v.note ?? '—'}</span>
+        {/if}
         <span class="m r">{formatOre(v.hours)}</span>
       </a>
     {:else}
@@ -197,7 +205,9 @@
   <p class="muted small nomargin">
     {formatoCondivisione === 'pdf'
       ? 'Questo telefono non permette di condividere file Excel: Condividi invia il PDF. L’Excel lo scarichi con il pulsante accanto.'
-      : 'Compilato sul modello della società: ore in colonna Q, note in colonna R, il tuo nome e il mese in testa.'}
+      : piuMansioni
+        ? `Compilato sul modello della società: ogni mansione nella sua colonna, note e sostituzioni in colonna ${colNote}, il tuo nome e il mese in testa.`
+        : `Compilato sul modello della società: ore in colonna ${voci[0]?.col ?? MANSIONE_ASSISTENTE}, note in colonna ${colNote}, il tuo nome e il mese in testa.`}
   </p>
 </section>
 
@@ -233,5 +243,8 @@
   .b { font-weight: 600; }
   .r { text-align: right; }
   .nota { font-size: var(--text-sm); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .due-righe { display: flex; flex-direction: column; gap: 1px; padding: var(--space-4) 0; color: var(--ink); }
+  .due-righe > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .due-righe .sotto { font-size: var(--text-xs); color: var(--muted); }
   .vuoto { padding: var(--space-12) var(--space-14); margin: 0; }
 </style>

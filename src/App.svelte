@@ -65,7 +65,8 @@
     return true;
   }
 
-  const configurato = $derived(dati.impostazioni.alias.length > 0 && !!dati.impostazioni.nome.trim());
+  // Gli assistenti si cercano nel foglio turni per nome; agli istruttori basta il nome per il foglio ore
+  const configurato = $derived(!!dati.impostazioni.nome.trim() && (dati.impostazioni.profilo === 'istruttore' || dati.impostazioni.alias.length > 0));
   // La barra in basso c'è solo nelle tre schede: dalle altre pagine si esce con Indietro, Annulla o Salva
   const conNav = $derived(configurato && indiceScheda(router.rotta.nome) >= 0);
 </script>

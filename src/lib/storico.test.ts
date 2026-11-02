@@ -44,10 +44,10 @@ describe('riepilogo per mese', () => {
   ];
 
   it('dall’archivio: le sostituzioni sono i giorni con nota «sost…»', () => {
-    expect(riepilogoMese('2026-01', turni, arch)).toEqual({ ym: '2026-01', ore: 11.5, oreSost: 8.25, nSost: 2, fonte: 'archivio' });
+    expect(riepilogoMese('2026-01', turni, arch)).toEqual({ ym: '2026-01', ore: 11.5, oreSost: 8.25, nSost: 2, fonte: 'archivio', euro: 0 });
   });
   it('se l’app ha turni nel mese valgono quelli, non l’archivio; gli annullati non contano', () => {
-    expect(riepilogoMese('2026-09', turni, arch)).toEqual({ ym: '2026-09', ore: 7.5, oreSost: 5, nSost: 1, fonte: 'app' });
+    expect(riepilogoMese('2026-09', turni, arch)).toEqual({ ym: '2026-09', ore: 7.5, oreSost: 5, nSost: 1, fonte: 'app', euro: 0 });
   });
   it('mese senza dati', () => {
     expect(riepilogoMese('2026-03', turni, arch).fonte).toBe('nessuna');
@@ -113,7 +113,7 @@ describe('ore inserite a mano', () => {
   const turni = [turno('2026-09-14', 900, 1050)];
 
   it('valgono più dell’archivio, meno dei turni dell’app', () => {
-    expect(riepilogoMese('2025-12', turni, archivio([dic]), { '2025-12': 48.5 })).toEqual({ ym: '2025-12', ore: 48.5, oreSost: 0, nSost: 0, fonte: 'manuale' });
+    expect(riepilogoMese('2025-12', turni, archivio([dic]), { '2025-12': 48.5 })).toEqual({ ym: '2025-12', ore: 48.5, oreSost: 0, nSost: 0, fonte: 'manuale', euro: 0 });
     expect(riepilogoMese('2026-09', turni, undefined, { '2026-09': 99 }).fonte).toBe('app');
     expect(riepilogoMese('2026-07', turni, undefined, { '2026-07': 12 }).ore).toBe(12);
   });
@@ -138,7 +138,36 @@ describe('casellario', () => {
   it('tolto dai compensi dell’anno in cui arriva lo stipendio', () => {
     const turni = [turno('2026-09-14', 900, 1500), turno('2026-10-05', 900, 1500)];
     const a = riepilogoAnno(2026, '2026-10', turni);
-    expect(compensoAnno(a, 9, 10, turni)).toEqual({ euro: 20 * 9 - 5, detrazioni: 5 });
-    expect(compensoAnno(a, 9, 0, turni)).toEqual({ euro: 180, detrazioni: 0 });
+    const imp = (casellario: number) => ({ mansioni: [{ col: 'Q', tariffa: 9 }], casellario });
+    expect(compensoAnno(a, imp(10), turni)).toEqual({ euro: 20 * 9 - 5, detrazioni: 5 });
+    expect(compensoAnno(a, imp(0), turni)).toEqual({ euro: 180, detrazioni: 0 });
+  });
+});
+
+describe('più mansioni', () => {
+  const imp = { mansioni: [{ col: 'Q', tariffa: 9 }, { col: 'H', tariffa: 15 }] };
+  it('compenso del mese: ogni ora alla tariffa della sua mansione, anche dall’archivio', () => {
+    const turni = [turno('2026-10-05', 900, 1020), turno('2026-10-06', 900, 960, { mansione: 'H' })];
+    expect(riepilogoMese('2026-10', turni, undefined, undefined, imp).euro).toBe(2 * 9 + 1 * 15);
+    const arch = archivio([{ ym: '2026-03', foglio: 'Marzo 26', voci: [{ day: 2, hours: 2 }, { day: 2, hours: 3, col: 'H' }] }]);
+    expect(riepilogoMese('2026-03', [], arch, undefined, imp).euro).toBe(2 * 9 + 3 * 15);
+  });
+});
+
+describe.skipIf(!haveTemplate)('archivio di un istruttore', () => {
+  it('legge le ore di ogni colonna e le note in U', () => {
+    const template = new Uint8Array(readFileSync(TEMPLATE));
+    const voci = [{ day: 3, hours: 2, col: 'H' }, { day: 3, hours: 1, col: 'L', note: 'sost marta' }, { day: 10, hours: 3, col: 'R' }];
+    const out = generaFoglioOre(template, { year: 2026, month: 2, voci, nome: 'Anna Bianchi' });
+    const m = leggiArchivio(out.bytes).mesi[0];
+    expect(m.voci).toEqual([{ day: 3, hours: 2, col: 'H', note: 'sost marta' }, { day: 3, hours: 1, col: 'L' }, { day: 10, hours: 3, col: 'R' }]);
+  });
+  it('salta le colonne di appoggio con il numero del giorno', () => {
+    const template = new Uint8Array(readFileSync(TEMPLATE));
+    // un mese con il giorno ripetuto in colonna O, come nei vecchi fogli personali
+    const out = generaFoglioOre(template, { year: 2026, month: 5, voci: [
+      { day: 4, hours: 4, col: 'O' }, { day: 5, hours: 5, col: 'O' }, { day: 4, hours: 3.5 }, { day: 5, hours: 4.25 },
+    ], nome: 'Mario Rossi' });
+    expect(leggiArchivio(out.bytes).mesi[0].voci).toEqual([{ day: 4, hours: 3.5 }, { day: 5, hours: 4.25 }]);
   });
 });

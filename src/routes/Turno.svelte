@@ -2,7 +2,7 @@
   import { untrack } from 'svelte';
   import { dati } from '../lib/dati.svelte';
   import { router, type Rotta } from '../lib/router.svelte';
-  import { AREE, daHHMM, type Promemoria, hhmm, isoDa, notaSostituzione, nuovoId, nomeArea, breveArea, oreDi, segnaModifica, type Area, type Turno } from '../lib/model';
+  import { AREE, daHHMM, type Promemoria, hhmm, isoDa, dataDa, notaSostituzione, nuovoId, nomeArea, breveArea, oreDi, segnaModifica, nomeMansione, MANSIONE_ASSISTENTE, type Area, type Turno } from '../lib/model';
   import { turniDelGiornoDalFile } from '../lib/turni/importa';
   import { normalizzaNome } from '../lib/turni/parse';
   import { formatOre, oreInParole } from '../lib/ore';
@@ -19,7 +19,18 @@
   const nuovo = !esistente;
 
   let data = $state(esistente?.data ?? r.data ?? isoDa(new Date()));
-  let area = $state<Area>(esistente?.area ?? 'maschile');
+  // Mansione (colonna del foglio ore): quella del turno, altrimenti la prima delle tue
+  const imp = dati.impostazioni;
+  let mansione = $state(esistente?.mansione ?? (imp.profilo === 'istruttore' ? imp.mansioni[0]?.col : undefined) ?? MANSIONE_ASSISTENTE);
+  const opzioniMansione = $derived([...new Set([...imp.mansioni.map((m) => m.col), mansione])]);
+  // La scelta serve se hai più mansioni (o una che non è quella degli assistenti); i turni del foglio sono da assistente
+  const sceltaMansione = $derived(esistente?.origine !== 'import' && (imp.mansioni.length > 1 || mansione !== MANSIONE_ASSISTENTE));
+  // Aree (spogliatoi, atrio) solo per gli assistenti spogliatoio
+  const conAree = $derived(mansione === MANSIONE_ASSISTENTE);
+  // Ripetizione: solo per un turno nuovo
+  let ripeti = $state(false);
+  let finoAl = $state('');
+  let area = $state<Area>(esistente?.area ?? (imp.profilo === 'istruttore' ? 'altro' : 'maschile'));
   let postazione = $state<number | undefined>(esistente?.postazione);
   let inizio = $state(esistente ? hhmm(esistente.inizio).padStart(5, '0') : '');
   let fine = $state(esistente ? hhmm(esistente.fine).padStart(5, '0') : '');
@@ -63,7 +74,10 @@
     } else suggerimento = '';
   }
 
-  const notaAuto = $derived(sost && sostituisce.trim() ? notaSostituzione(sostituisce, area) : '');
+  // «sost greta spogl piccoli» per gli assistenti; per le altre mansioni il nome della mansione
+  const notaAuto = $derived(
+    !sost || !sostituisce.trim() ? '' : conAree ? notaSostituzione(sostituisce, area) : `sost ${sostituisce.trim().toLowerCase()} ${nomeMansione(mansione, imp).toLowerCase()}`,
+  );
   $effect(() => {
     if (!notaToccata) nota = notaAuto;
   });
@@ -74,7 +88,8 @@
 
   // Come si chiamerebbe il turno senza un nome suo, e quali promemoria erediterebbe
   const bozza = $derived<Turno>({
-    id: 'bozza', data, area, postazione: area === 'altro' ? undefined : postazione, inizio: minIni ?? 0, fine: minFin ?? 0, origine: 'manuale',
+    id: 'bozza', data, area: conAree ? area : 'altro', postazione: area === 'altro' || !conAree ? undefined : postazione, inizio: minIni ?? 0, fine: minFin ?? 0, origine: 'manuale',
+    mansione: mansione === MANSIONE_ASSISTENTE ? undefined : mansione,
     sostituisce: sost && sostituisce.trim() ? sostituisce.trim() : undefined,
   });
   const titoloAuto = $derived(titoloTurno(bozza, dati.impostazioni));
@@ -87,13 +102,21 @@
     promemoriaPropri = !promemoriaPropri;
   }
 
+  const GIORNI_SETT = ['domenica', 'lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato'];
   const titolo = nuovo ? (r.tipo === 'sost' ? 'Nuova sostituzione' : 'Nuovo turno') : esistente!.sostituisce ? 'Sostituzione' : esistente!.origine === 'import' ? 'Turno dal foglio' : 'Turno';
 
   // «Salva» si accende solo quando c'è qualcosa da salvare (e di valido)
-  const statoForm = () => JSON.stringify({ data, area, postazione, inizio, fine, sost, sostituisce: sostituisce.trim(), nota: nota.trim(), annullato, nomeTurno: nomeTurno.trim(), promemoriaPropri, promemoria });
+  const statoForm = () => JSON.stringify({ data, mansione, ripeti, finoAl, area, postazione, inizio, fine, sost, sostituisce: sostituisce.trim(), nota: nota.trim(), annullato, nomeTurno: nomeTurno.trim(), promemoriaPropri, promemoria });
   const iniziale = statoForm();
   const cambiato = $derived(statoForm() !== iniziale);
-  const valido = $derived(!!data && ore !== null && (!sost || !!sostituisce.trim()));
+  // Le date della ripetizione: ogni 7 giorni da quella scelta fino al «fino al» compreso (al massimo un anno)
+  const date = $derived.by(() => {
+    if (!nuovo || !ripeti || !data || !finoAl || finoAl < data) return data ? [data] : [];
+    const out: string[] = [];
+    for (let d = dataDa(data); isoDa(d) <= finoAl && out.length < 53; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7)) out.push(isoDa(d));
+    return out;
+  });
+  const valido = $derived(!!data && ore !== null && (!sost || !!sostituisce.trim()) && (!ripeti || !nuovo || (!!finoAl && finoAl > data)));
   const salvabile = $derived(valido && (nuovo || cambiato));
   const erroreOrario = $derived(minIni !== null && minFin !== null && minFin <= minIni ? 'La fine deve essere dopo l’inizio.' : '');
 
@@ -111,8 +134,9 @@
     const t: Turno = {
       ...base,
       data,
-      area,
-      postazione: area === 'altro' ? undefined : postazione,
+      area: conAree ? area : 'altro',
+      postazione: area === 'altro' || !conAree ? undefined : postazione,
+      mansione: mansione === MANSIONE_ASSISTENTE ? undefined : mansione,
       inizio: minIni,
       fine: minFin,
       sostituisce: sost ? sostituisce.trim() : undefined,
@@ -121,7 +145,12 @@
       nome: nomeTurno.trim() || undefined,
       promemoria: promemoriaPropri ? $state.snapshot(promemoria) : undefined,
     };
-    dati.salvaTurno(esistente ? segnaModifica($state.snapshot(esistente) as Turno, t) : t);
+    if (esistente) dati.salvaTurno(segnaModifica($state.snapshot(esistente) as Turno, t));
+    else if (date.length > 1) {
+      // Ogni settimana: un turno per data, legati dallo stesso id di serie
+      const serie = nuovoId();
+      dati.setTurni([...dati.turni, ...date.map((d) => ({ ...t, id: nuovoId(), data: d, serie }))]);
+    } else dati.salvaTurno(t);
     router.indietro(`#/mese/${data.slice(0, 7)}?g=${data}`);
   }
 
@@ -162,6 +191,32 @@
     <input class="inp" type="date" bind:value={data} />
   </label>
 
+  {#if nuovo}
+    <div class="field">
+      <span class="lbl" id="lbl-ripeti">Quante volte</span>
+      <div class="seg due-seg" role="group" aria-labelledby="lbl-ripeti">
+        <button aria-pressed={!ripeti} onclick={() => (ripeti = false)}>Una volta</button>
+        <button aria-pressed={ripeti} onclick={() => (ripeti = true)}>Ogni settimana</button>
+      </div>
+      {#if ripeti}
+        <label class="field"><span class="lbl">Fino al</span>
+          <input class="inp" type="date" bind:value={finoAl} min={data} /></label>
+        <p class="muted small nomargin">{date.length > 1 ? `Creo ${date.length} turni, uno ogni ${GIORNI_SETT[dataDa(data).getDay()]}: poi li modifichi uno per uno.` : 'Scegli fino a quando si ripete.'}</p>
+      {/if}
+    </div>
+  {/if}
+
+  {#if sceltaMansione}
+    <label class="field">
+      <span class="lbl">Mansione</span>
+      <select class="inp" bind:value={mansione}>
+        {#each opzioniMansione as col (col)}
+          <option value={col}>{nomeMansione(col, imp)}</option>
+        {/each}
+      </select>
+    </label>
+  {/if}
+
   {#if sost}
     <div class="field">
       <label class="lbl" for="chi">Chi sostituisci</label>
@@ -179,6 +234,7 @@
     </div>
   {/if}
 
+  {#if conAree}
   <div class="field">
     <span class="lbl">Area</span>
     <div class="seg aree">
@@ -187,6 +243,7 @@
       {/each}
     </div>
   </div>
+  {/if}
 
   <div class="field">
     <span class="lbl">Orario</span>
@@ -246,7 +303,7 @@
 </section>
 
 <style>
-  .tipo { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tipo, .due-seg { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .aree { grid-template-columns: repeat(5, minmax(0, 1fr)); }
   .aree button { font-size: var(--text-xs); }
   .durata { display: flex; justify-content: space-between; font-size: var(--text-sm); }

@@ -8,10 +8,15 @@ export const LAYOUT = {
   /** Riga del giorno 1; il giorno d sta nella riga firstDayRow + d - 1. */
   firstDayRow: 12,
   dayCol: 'B',
+  /** Colonne delle mansioni (riga 11): ogni turno va nella colonna della sua */
+  primaCol: 'C',
+  ultimaCol: 'T',
+  /** Colonna degli assistenti spogliatoio, l'unica con la somma già nel modello */
   hoursCol: 'Q',
+  /** Note: in R se nel mese ci sono solo ore da assistente spogliatoio (come nell'archivio), altrimenti in U */
   noteCol: 'R',
-  /** Colonne promemoria (giorno e giorno della settimana) da svuotare. */
-  helperCols: ['O', 'P'],
+  noteColAltre: 'U',
+  totalRow: 43,
   totalCell: 'Q43',
   compensoCell: 'Q45',
   dateCell: 'E4',
@@ -27,8 +32,18 @@ export const MESI = [
 export interface VoceGiorno {
   day: number;
   hours: number;
-  /** Es. "sost greta spogl piccoli": finisce nella colonna R. */
+  /** Es. "sost greta spogl piccoli": finisce nella colonna delle note (R o U). */
   note?: string;
+  /** Colonna della mansione (C–T); assente = Q */
+  col?: string;
+}
+
+/** Le colonne delle mansioni, da C a T */
+export const COLONNE_MANSIONI = Array.from({ length: 18 }, (_, i) => String.fromCharCode(67 + i));
+
+/** Dove vanno le note del mese: R se tutte le ore sono da assistente spogliatoio, altrimenti U */
+export function colonnaNote(voci: VoceGiorno[]): string {
+  return voci.every((v) => (v.col ?? LAYOUT.hoursCol) === LAYOUT.hoursCol) ? LAYOUT.noteCol : LAYOUT.noteColAltre;
 }
 
 export interface OpzioniFoglio {
@@ -85,7 +100,8 @@ function checkTemplate(sheet: string): void {
 
 /**
  * Compila il foglio ore partendo dal modello originale.
- * Tocca solo: colonna Q (ore), colonna R (note), O–P (svuotate), Q43 (valore del totale),
+ * Tocca solo: le colonne delle mansioni C–T (ore, il resto svuotato), la colonna delle note (R o U),
+ * i totali in riga 43,
  * Q45 (se c'è: svuotata e senza bordi), data E4, nome E5, mese F6 e nome del foglio visibile.
  */
 export function generaFoglioOre(template: Uint8Array, opt: OpzioniFoglio): EsitoFoglio {
@@ -107,26 +123,45 @@ export function generaFoglioOre(template: Uint8Array, opt: OpzioniFoglio): Esito
   let sheet = pkg.text(target.path);
   checkTemplate(sheet);
 
+  const perCol = new Map<string, Map<number, number>>(); // colonna → giorno → ore
+  for (const v of opt.voci) {
+    const col = v.col ?? LAYOUT.hoursCol;
+    if (!COLONNE_MANSIONI.includes(col)) throw new Error(`Colonna della mansione non valida: ${col}`);
+    if (!(v.hours > 0)) continue;
+    const g = perCol.get(col) ?? new Map<number, number>();
+    g.set(v.day, round2((g.get(v.day) ?? 0) + v.hours));
+    perCol.set(col, g);
+  }
+  const colNote = colonnaNote(opt.voci);
+  if (colNote === LAYOUT.noteColAltre) {
+    // La colonna U non ha intestazione nel modello: la scrivo, così si capisce cosa c'è sotto
+    sheet = setCell(sheet, `${LAYOUT.noteColAltre}${LAYOUT.firstDayRow - 1}`, { content: { kind: 'text', value: 'NOTE (sostituzioni)' } });
+  }
+
   let totale = 0;
   for (let d = 1; d <= 31; d++) {
     const row = LAYOUT.firstDayRow + d - 1;
-    for (const col of LAYOUT.helperCols) {
-      sheet = setCell(sheet, `${col}${row}`, { content: { kind: 'empty' } });
+    const dentro = d <= giorniNelMese;
+    // Tutte le colonne delle mansioni: le tue ore, il resto vuoto (anche eventuali appunti del modello)
+    for (const col of COLONNE_MANSIONI) {
+      if (col === colNote) continue;
+      const ore = dentro ? perCol.get(col)?.get(d) : undefined;
+      sheet = setCell(sheet, `${col}${row}`, { content: ore ? { kind: 'number', value: ore } : { kind: 'empty' } });
+      if (ore) totale = round2(totale + ore);
     }
-    const voce = d <= giorniNelMese ? perGiorno.get(d) : undefined;
-    const ore = voce && voce.hours > 0 ? voce.hours : undefined;
-    sheet = setCell(sheet, `${LAYOUT.hoursCol}${row}`, {
-      content: ore === undefined ? { kind: 'empty' } : { kind: 'number', value: ore },
-    });
-    const nota = voce?.notes.join('; ');
-    sheet = setCell(sheet, `${LAYOUT.noteCol}${row}`, {
-      content: nota ? { kind: 'text', value: nota } : { kind: 'empty' },
-    });
-    if (ore) totale = round2(totale + ore);
+    const nota = dentro ? perGiorno.get(d)?.notes.join('; ') : undefined;
+    sheet = setCell(sheet, `${colNote}${row}`, { content: nota ? { kind: 'text', value: nota } : { kind: 'empty' } });
   }
 
-  // Il totale resta una formula: aggiorno solo il valore mostrato da chi non ricalcola (es. anteprime).
-  sheet = setCell(sheet, LAYOUT.totalCell, { content: { kind: 'formulaCache', value: totale } });
+  // Totali in riga 43: Q ha già la somma nel modello (aggiorno solo il valore mostrato da chi non
+  // ricalcola, es. le anteprime); per le altre colonne usate la scrivo io.
+  for (const col of COLONNE_MANSIONI) {
+    const somma = round2([...(perCol.get(col)?.values() ?? [])].reduce((a, b) => a + b, 0));
+    const ref = `${col}${LAYOUT.totalRow}`;
+    if (col === LAYOUT.hoursCol) sheet = setCell(sheet, ref, { content: { kind: 'formulaCache', value: somma } });
+    else if (perCol.has(col)) sheet = setCell(sheet, ref, { content: { kind: 'formula', formula: `SUM(${col}${LAYOUT.firstDayRow}:${col}${LAYOUT.firstDayRow + 30})`, value: somma } });
+    else if (findCell(sheet, ref)) sheet = setCell(sheet, ref, { content: { kind: 'empty' } });
+  }
 
   // Q45: nei modelli personali c'era il compenso. Via il valore e via i bordi; nel modello pulito non c'è.
   const q45Style = cellStyle(sheet, LAYOUT.compensoCell);

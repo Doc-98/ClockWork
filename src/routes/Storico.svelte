@@ -21,7 +21,7 @@
 
   // Le soglie contano i compensi per data di pagamento: il lavoro di dicembre si incassa a gennaio
   const annoSolare = $derived(riepilogoAnno(anno, oggi, dati.turni, dati.archivio, dati.oreManuali));
-  const compenso = $derived(calcolaCompenso(annoSolare, dati.impostazioni.tariffa, dati.impostazioni.casellario, dati.turni, dati.archivio, dati.oreManuali));
+  const compenso = $derived(calcolaCompenso(annoSolare, dati.impostazioni, dati.turni, dati.archivio, dati.oreManuali));
   const compensoAnno = $derived(compenso.euro);
   /** La barra arriva a 15.000 €, o poco oltre se li hai superati */
   const scala = $derived(Math.max(SOGLIA_IRPEF, compensoAnno * 1.05));
@@ -111,7 +111,7 @@
 
   function correggi(c: Extract<Controllo, { tipo: 'minuti' }>) {
     if (!dati.archivio) return;
-    return dati.setArchivio(correggiOre(dati.archivio, c.ym, c.day, c.proposta));
+    return dati.setArchivio(correggiOre(dati.archivio, c.ym, c.day, c.proposta, c.scritto));
   }
 
   function lascia(c: Controllo) {
@@ -309,7 +309,7 @@
           <button class="btn btn-secondary grow" onclick={togliArchivio}>Togli</button>
         </div>
       {:else}
-        <p class="muted small nomargin">Carica il file con i fogli ore che hai già consegnato, un foglio per mese: leggo le ore della colonna Q e le note della R. Resta solo su questo telefono.</p>
+        <p class="muted small nomargin">Carica il file con i fogli ore che hai già consegnato, un foglio per mese: leggo le ore di ogni mansione e le note. Resta solo su questo telefono.</p>
         <label class="btn btn-secondary upload">Carica archivio (.xlsx)
           <input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onchange={caricaArchivio} /></label>
       {/if}

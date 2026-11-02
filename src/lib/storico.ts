@@ -1,6 +1,6 @@
 import { readWorkbook, serialToDate, type CellValue, type SheetData } from './xlsx/read';
 import { meseDalNomeFoglio } from './turni/parse';
-import { oreDi, type Turno } from './model';
+import { MANSIONE_ASSISTENTE, compensoTurni, oreDi, tariffaDi, type Impostazioni, type Turno } from './model';
 import type { VoceGiorno } from './foglio/genera';
 
 /**
@@ -65,35 +65,58 @@ function meseDelFoglio(sheet: SheetData, rigaIntestazione: number): string | und
   return undefined;
 }
 
+const COL_C = 3;
+const COL_T = 20;
+const COL_R = 18;
+const COL_U = 21;
+const lettera = (c: number) => String.fromCharCode(64 + c);
+
 function leggiFoglio(sheet: SheetData): MeseArchivio | undefined {
-  // Riga di intestazione: quella con la colonna delle ore
+  // Riga di intestazione: quella con «Assistente spogliatoio nuoto curricolare» (colonna Q)
   let rigaInt = 0;
-  let colOre = 0;
   for (const [r, riga] of [...sheet.rows.entries()].sort((a, b) => a[0] - b[0])) {
-    for (const [c, v] of riga) {
-      if (RE_COLONNA_ORE.test(testo(v))) {
-        rigaInt = r;
-        colOre = c;
-        break;
-      }
+    if ([...riga.values()].some((v) => RE_COLONNA_ORE.test(testo(v)))) {
+      rigaInt = r;
+      break;
     }
-    if (rigaInt) break;
   }
   if (!rigaInt) return undefined;
   const intestazione = sheet.rows.get(rigaInt)!;
   const colGiorno = [...intestazione.entries()].find(([, v]) => testo(v).toLowerCase() === 'giorno')?.[0] ?? 2;
 
-  const voci: VoceGiorno[] = [];
+  // Le righe dei giorni
+  const giorni: { day: number; riga: Map<number, CellValue> }[] = [];
   for (let r = rigaInt + 1; r <= rigaInt + 40; r++) {
     const riga = sheet.rows.get(r);
     if (!riga) continue;
     if (/^totale/i.test(testo(riga.get(colGiorno)))) break;
     const day = numero(riga.get(colGiorno));
     if (!day || !Number.isInteger(day) || day < 1 || day > 31) continue;
-    const hours = numero(riga.get(colOre));
-    if (!hours) continue;
-    const note = testo(riga.get(colOre + 1)) || undefined;
-    voci.push({ day, hours, note });
+    giorni.push({ day, riga });
+  }
+
+  // Colonne di appoggio (es. il numero del giorno ripetuto in O): ogni valore uguale al giorno → non sono ore
+  const appoggio = new Set<number>();
+  for (let c = COL_C; c <= COL_T; c++) {
+    const valori = giorni.map((g) => [g.day, numero(g.riga.get(c))] as const).filter(([, v]) => v !== undefined);
+    if (valori.length >= 2 && valori.every(([d, v]) => v === d)) appoggio.add(c);
+  }
+
+  const voci: VoceGiorno[] = [];
+  for (const { day, riga } of giorni) {
+    const delGiorno: VoceGiorno[] = [];
+    for (let c = COL_C; c <= COL_T; c++) {
+      if (appoggio.has(c)) continue;
+      const hours = numero(riga.get(c));
+      if (!hours) continue;
+      const col = lettera(c);
+      delGiorno.push(col === MANSIONE_ASSISTENTE ? { day, hours } : { day, hours, col });
+    }
+    if (!delGiorno.length) continue;
+    // Note e sostituzioni: testo in R (assistenti) o in U (gli altri)
+    const note = [COL_R, COL_U].map((c) => (typeof riga.get(c) === 'string' ? testo(riga.get(c)) : '')).find(Boolean);
+    if (note) delGiorno[0].note = note;
+    voci.push(...delGiorno);
   }
   if (!voci.length) return undefined;
   const ym = meseDelFoglio(sheet, rigaInt);
@@ -106,7 +129,7 @@ export interface EsitoArchivio {
   doppi: string[];
 }
 
-/** Legge l'archivio dei fogli ore: un foglio per mese, ore nella colonna «Assistente spogliatoio nuoto curricolare». */
+/** Legge l'archivio dei fogli ore: un foglio per mese, ore nelle colonne delle mansioni (C–T), note in R o U. */
 export function leggiArchivio(bytes: Uint8Array): EsitoArchivio {
   const mesi = new Map<string, MeseArchivio>();
   const doppi: string[] = [];
@@ -130,6 +153,8 @@ export interface MeseStorico {
   nSost: number;
   /** 'manuale': totale del mese inserito a mano (es. foglio ore perso o sbagliato) */
   fonte: 'app' | 'manuale' | 'archivio' | 'nessuna';
+  /** Compenso del mese, ogni ora alla tariffa della sua mansione (0 senza tariffe) */
+  euro: number;
 }
 
 /** Ore totali inserite a mano per un mese (chiave YYYY-MM): valgono più dell'archivio, meno dei turni dell'app */
@@ -139,7 +164,8 @@ const arrotonda = (n: number) => Math.round(n * 100) / 100;
 /** Nell'archivio le sostituzioni sono scritte a mano: «sost …», «sostit …», «sostituzione …» */
 export const eSostituzione = (nota?: string) => /^\s*sost/i.test(nota ?? '');
 
-export function riepilogoMese(ym: string, turni: Turno[], archivio?: Pick<Archivio, 'mesi'>, manuali?: OreManuali): MeseStorico {
+export function riepilogoMese(ym: string, turni: Turno[], archivio?: Pick<Archivio, 'mesi'>, manuali?: OreManuali, imp?: Pick<Impostazioni, 'mansioni'>): MeseStorico {
+  const tar = (col?: string) => (imp ? tariffaDi(col ?? MANSIONE_ASSISTENTE, imp) : 0);
   const suoi = turni.filter((t) => !t.annullato && t.data.startsWith(`${ym}-`));
   if (suoi.length) {
     const sost = suoi.filter((t) => t.sostituisce);
@@ -149,10 +175,12 @@ export function riepilogoMese(ym: string, turni: Turno[], archivio?: Pick<Archiv
       oreSost: arrotonda(sost.reduce((s, t) => s + oreDi(t), 0)),
       nSost: sost.length,
       fonte: 'app',
+      euro: imp ? compensoTurni(suoi, imp) : 0,
     };
   }
   const aMano = manuali?.[ym];
-  if (aMano !== undefined) return { ym, ore: arrotonda(aMano), oreSost: 0, nSost: 0, fonte: 'manuale' };
+  // Le ore scritte a mano non hanno mansione: valgono alla tariffa della tua prima mansione
+  if (aMano !== undefined) return { ym, ore: arrotonda(aMano), oreSost: 0, nSost: 0, fonte: 'manuale', euro: arrotonda(aMano * (imp?.mansioni[0]?.tariffa ?? 0)) };
   const a = archivio?.mesi.find((m) => m.ym === ym);
   if (a) {
     const sost = a.voci.filter((v) => eSostituzione(v.note));
@@ -162,9 +190,10 @@ export function riepilogoMese(ym: string, turni: Turno[], archivio?: Pick<Archiv
       oreSost: arrotonda(sost.reduce((s, v) => s + v.hours, 0)),
       nSost: sost.length,
       fonte: 'archivio',
+      euro: arrotonda(a.voci.reduce((s, v) => s + v.hours * tar(v.col), 0)),
     };
   }
-  return { ym, ore: 0, oreSost: 0, nSost: 0, fonte: 'nessuna' };
+  return { ym, ore: 0, oreSost: 0, nSost: 0, fonte: 'nessuna', euro: 0 };
 }
 
 /** Gli ultimi `n` mesi fino a `fino` compreso (YYYY-MM), dal più vecchio */
@@ -240,7 +269,7 @@ export function minutiScrittiComeDecimali(hours: number): number | undefined {
   return arrotonda(h + centesimi / 60);
 }
 
-const firma = (m: MeseArchivio) => m.voci.map((v) => `${v.day}:${v.hours}`).join('|');
+const firma = (m: MeseArchivio) => m.voci.map((v) => `${v.day}:${v.col ?? ''}${v.hours}`).join('|');
 
 export function controlliArchivio(archivio: Pick<Archivio, 'mesi' | 'ignorati'>, manuali: OreManuali = {}): Controllo[] {
   const out: Controllo[] = [];
@@ -262,10 +291,12 @@ export function controlliArchivio(archivio: Pick<Archivio, 'mesi' | 'ignorati'>,
 }
 
 /** Applica la correzione proposta per le ore di un giorno */
-export function correggiOre(archivio: Archivio, ym: string, day: number, ore: number): Archivio {
+export function correggiOre(archivio: Archivio, ym: string, day: number, ore: number, scritto?: number): Archivio {
+  // Con più mansioni nello stesso giorno, solo la voce con il valore sbagliato
+  const questa = (v: VoceGiorno) => v.day === day && (scritto === undefined || v.hours === scritto);
   return {
     ...archivio,
-    mesi: archivio.mesi.map((m) => (m.ym !== ym ? m : { ...m, voci: m.voci.map((v) => (v.day === day ? { ...v, hours: ore } : v)) })),
+    mesi: archivio.mesi.map((m) => (m.ym !== ym ? m : { ...m, voci: m.voci.map((v) => (questa(v) ? { ...v, hours: ore } : v)) })),
   };
 }
 
@@ -287,8 +318,14 @@ export function detrazioneMese(ymLavoro: string, meseStipendio: number, ore: num
   return Number(mesePagamento(ymLavoro).slice(5, 7)) === meseStipendio ? COSTO_CASELLARIO : 0;
 }
 
-/** Compensi dell'anno (per data di pagamento), già senza le detrazioni */
-export function compensoAnno(a: AnnoStorico, tariffa: number, meseStipendio: number, turni: Turno[], archivio?: Pick<Archivio, 'mesi'>, manuali?: OreManuali): { euro: number; detrazioni: number } {
-  const detrazioni = a.mesi.reduce((s, ym) => s + detrazioneMese(ym, meseStipendio, riepilogoMese(ym, turni, archivio, manuali).ore), 0);
-  return { euro: Math.max(0, Math.round((a.ore * tariffa - detrazioni) * 100) / 100), detrazioni };
+/** Compensi dell'anno (per data di pagamento), ognuno alla tariffa della sua mansione, già senza le detrazioni */
+export function compensoAnno(a: AnnoStorico, imp: Pick<Impostazioni, 'mansioni' | 'casellario'>, turni: Turno[], archivio?: Pick<Archivio, 'mesi'>, manuali?: OreManuali): { euro: number; detrazioni: number } {
+  let lordo = 0;
+  let detrazioni = 0;
+  for (const ym of a.mesi) {
+    const r = riepilogoMese(ym, turni, archivio, manuali, imp);
+    lordo += r.euro;
+    detrazioni += detrazioneMese(ym, imp.casellario, r.ore);
+  }
+  return { euro: Math.max(0, Math.round((lordo - detrazioni) * 100) / 100), detrazioni };
 }

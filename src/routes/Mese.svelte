@@ -1,7 +1,7 @@
 <script lang="ts">
   import { dati } from '../lib/dati.svelte';
   import { router, type Rotta } from '../lib/router.svelte';
-  import { isoDa, dataDa, breveArea, type Area } from '../lib/model';
+  import { isoDa, dataDa, breveArea, conAree, type Area } from '../lib/model';
   import { MESI } from '../lib/foglio/genera';
   import { vista, ymDa, ymOggi, ymStr, spostaYm, type Ym } from '../lib/vista.svelte';
   import TitoloMese from '../components/TitoloMese.svelte';
@@ -37,7 +37,7 @@
       if (d < 1 || d > giorni) return null;
       const iso = isoDa(new Date(ym.year, ym.month - 1, d));
       const ts = attivi.filter((t) => t.data === iso);
-      return { d, iso, punti: ts.map((t) => ({ colore: COLORI[t.area], sost: !!t.sostituisce, quadro: t.area === 'atrio' })) };
+      return { d, iso, punti: ts.map((t) => ({ colore: conAree(t) ? COLORI[t.area] : 'var(--cloro)', sost: !!t.sostituisce, quadro: conAree(t) && t.area === 'atrio' })) };
     });
   });
 
@@ -96,10 +96,15 @@
       {/each}
     </div>
     <div class="legenda">
-      <span><i style="--c: var(--area-m)"></i>{breveArea('maschile', dati.impostazioni)}</span>
-      <span><i style="--c: var(--area-f)"></i>{breveArea('femminile', dati.impostazioni)}</span>
-      <span><i style="--c: var(--area-p)"></i>{breveArea('piccoli', dati.impostazioni)}</span>
-      <span><i class="quadro" style="--c: var(--area-a)"></i>{breveArea('atrio', dati.impostazioni)}</span>
+      {#if dati.impostazioni.profilo === 'assistente'}
+        <span><i style="--c: var(--area-m)"></i>{breveArea('maschile', dati.impostazioni)}</span>
+        <span><i style="--c: var(--area-f)"></i>{breveArea('femminile', dati.impostazioni)}</span>
+        <span><i style="--c: var(--area-p)"></i>{breveArea('piccoli', dati.impostazioni)}</span>
+        <span><i class="quadro" style="--c: var(--area-a)"></i>{breveArea('atrio', dati.impostazioni)}</span>
+        {#if dati.impostazioni.mansioni.length > 1}<span><i style="--c: var(--cloro)"></i>Altre mansioni</span>{/if}
+      {:else}
+        <span><i style="--c: var(--cloro)"></i>Turno</span>
+      {/if}
       <span><i class="ring" style="--c: var(--muted)"></i>Sostituzione</span>
     </div>
   </div>

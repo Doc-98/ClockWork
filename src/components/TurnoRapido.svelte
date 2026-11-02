@@ -1,6 +1,6 @@
 <script lang="ts">
   import { dati } from '../lib/dati.svelte';
-  import { breveArea, daHHMM, hhmm, oreDi, segnaModifica, type Turno } from '../lib/model';
+  import { etichettaTurno, conAree, daHHMM, hhmm, oreDi, segnaModifica, type Turno } from '../lib/model';
   import { formatOre } from '../lib/ore';
   import Icona from './Icona.svelte';
 
@@ -11,7 +11,7 @@
   let { turno, aperto, apri }: { turno: Turno; aperto: boolean; apri: (aperto: boolean) => void } = $props();
 
   const etichetta = $derived(
-    turno.nome?.trim() || (turno.sostituisce ? `Sost. ${turno.sostituisce}` : `${breveArea(turno.area, dati.impostazioni)}${turno.postazione ? ' · P' + turno.postazione : ''}${turno.presa ? ' · presa' : ''}`),
+    turno.nome?.trim() || (turno.sostituisce ? `Sost. ${turno.sostituisce}` : `${etichettaTurno(turno, dati.impostazioni)}${turno.postazione ? ' · P' + turno.postazione : ''}${turno.presa ? ' · presa' : ''}`),
   );
 
   const iniziale = () => ({ inizio: hhmm(turno.inizio).padStart(5, '0'), fine: hhmm(turno.fine).padStart(5, '0'), nota: turno.nota ?? '', annullato: !!turno.annullato });
@@ -39,7 +39,7 @@
   <button class="riga" aria-expanded={aperto} onclick={() => apri(!aperto)}>
     <span class="centro">
       <span class="m ora">{hhmm(turno.inizio)}–{hhmm(turno.fine)}</span>
-      <span class="tag t-{turno.area}">{etichetta}</span>
+      <span class="tag t-{conAree(turno) ? turno.area : 'altro'}">{etichetta}</span>
     </span>
     <span class="m ore">{turno.annullato ? 'annullato' : `${formatOre(oreDi(turno))} h`}</span>
     <Icona nome="giu" class="chev" />

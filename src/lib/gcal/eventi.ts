@@ -1,4 +1,4 @@
-import { nomeArea, breveArea, hhmm, oreDi, IMPOSTAZIONI_DEFAULT, type Impostazioni, type Promemoria, type Turno } from '../model';
+import { nomeArea, breveArea, hhmm, oreDi, IMPOSTAZIONI_DEFAULT, type Impostazioni, type Promemoria, type Turno, etichettaTurno } from '../model';
 
 /**
  * Dai turni agli eventi del calendario, e confronto con ciò che c'è già su Google.
@@ -49,7 +49,7 @@ export const COLORI_GOOGLE: { id: string; nome: string; hex: string }[] = [
 
 /** Segnaposto utilizzabili nei titoli, con la spiegazione per l'utente. */
 export const SEGNAPOSTO: { chiave: string; descrizione: string }[] = [
-  { chiave: '{area}', descrizione: 'nome breve dell’area' },
+  { chiave: '{area}', descrizione: 'nome breve dell’area (o la mansione)' },
   { chiave: '{postazione}', descrizione: 'es. P2 (vuoto se non c’è)' },
   { chiave: '{collega}', descrizione: 'chi sostituisci' },
   { chiave: '{inizio}', descrizione: 'ora di inizio' },
@@ -58,9 +58,10 @@ export const SEGNAPOSTO: { chiave: string; descrizione: string }[] = [
 ];
 
 /** Sostituisce i segnaposto e ripulisce ciò che resta vuoto (spazi doppi, parentesi vuote, separatori in coda). */
-export function applicaModello(modello: string, t: Turno, imp: Pick<Impostazioni, 'aree'> = IMPOSTAZIONI_DEFAULT): string {
+export function applicaModello(modello: string, t: Turno, imp: Pick<Impostazioni, 'aree'> & Partial<Pick<Impostazioni, 'mansioni'>> = IMPOSTAZIONI_DEFAULT): string {
   const valori: Record<string, string> = {
-    area: breveArea(t.area, imp),
+    // Per chi non è assistente spogliatoio al posto dell'area c'è la mansione
+    area: etichettaTurno(t, imp),
     postazione: t.postazione ? `P${t.postazione}` : '',
     collega: t.sostituisce ?? '',
     inizio: hhmm(t.inizio),
@@ -76,12 +77,12 @@ export function applicaModello(modello: string, t: Turno, imp: Pick<Impostazioni
 }
 
 /** Titolo dell'evento: nome del turno, poi titolo dell'area (se scelto «per area»), poi il modello. */
-export function titoloTurno(t: Turno, imp: Pick<Impostazioni, 'aree' | 'calendario'> = IMPOSTAZIONI_DEFAULT): string {
+export function titoloTurno(t: Turno, imp: Pick<Impostazioni, 'aree' | 'calendario'> & Partial<Pick<Impostazioni, 'mansioni'>> = IMPOSTAZIONI_DEFAULT): string {
   if (t.nome?.trim()) return t.nome.trim();
   const cal = imp.calendario;
   const titoloArea = cal.modoTitolo === 'area' ? imp.aree[t.area]?.titolo?.trim() : '';
   const modello = titoloArea || (t.sostituisce ? cal.modelloSost : cal.modelloTurno);
-  return applicaModello(modello, t, imp) || breveArea(t.area, imp);
+  return applicaModello(modello, t, imp) || etichettaTurno(t, imp);
 }
 
 /** Promemoria che valgono per il turno: quelli del turno, poi quelli dell'area, poi i predefiniti. */

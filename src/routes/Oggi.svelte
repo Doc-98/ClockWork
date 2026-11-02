@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { dati } from '../lib/dati.svelte';
-  import { nomeArea, hhmm, oreDi, isoDa, dataDa } from '../lib/model';
+  import { nomeArea, nomeMansione, conAree, mansioneDi, hhmm, oreDi, isoDa, dataDa } from '../lib/model';
   import { formatOre } from '../lib/ore';
   import { MESI } from '../lib/foglio/genera';
   import RigaTurno from '../components/RigaTurno.svelte';
@@ -93,7 +93,7 @@
       </div>
       <div class="m orario">{hhmm(principale.inizio)}–{hhmm(principale.fine)}</div>
       <div class="dove">
-        {principale.sostituisce ? `Sostituzione di ${principale.sostituisce} · ` : ''}{principale.nome?.trim() ? `${principale.nome.trim()} · ` : ''}{nomeArea(principale.area, dati.impostazioni)}{principale.postazione ? ` · Postazione ${principale.postazione}` : ''}{principale.presa ? ' · presa' : ''}
+        {principale.sostituisce ? `Sostituzione di ${principale.sostituisce} · ` : ''}{principale.nome?.trim() ? `${principale.nome.trim()} · ` : ''}{conAree(principale) ? nomeArea(principale.area, dati.impostazioni) : nomeMansione(mansioneDi(principale), dati.impostazioni)}{principale.postazione ? ` · Postazione ${principale.postazione}` : ''}{principale.presa ? ' · presa' : ''}
       </div>
       {#if stato === 'in-corso'}
         <div class="avanzamento scuro"><div style="width: {Math.round(progresso * 100)}%"></div></div>

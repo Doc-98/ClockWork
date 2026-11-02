@@ -10,7 +10,7 @@ import { LAYOUT } from './genera';
  * stessi colori d'intestazione. Serve dove il sistema non permette di condividere file Excel (Android).
  */
 
-const COLONNE = Array.from({ length: colToIndex('T') - colToIndex('B') + 1 }, (_, i) => String.fromCharCode(66 + i)); // B..T
+const COLONNE_BASE = Array.from({ length: colToIndex('T') - colToIndex('B') + 1 }, (_, i) => String.fromCharCode(66 + i)); // B..T
 const RIGA_INTESTAZIONE = LAYOUT.firstDayRow - 1; // 11
 const RIGA_TOTALE = 43;
 
@@ -73,6 +73,9 @@ export async function generaPdfFoglio(xlsx: Uint8Array): Promise<Uint8Array> {
   const dati = readWorkbook(xlsx).find((s) => s.state === 'visible')!;
   const val = (col: string, row: number) => dati.rows.get(row)?.get(colToIndex(col));
   const fill = riempimenti(pkg.text('xl/styles.xml'));
+  // La colonna U (note e sostituzioni di chi non è solo assistente spogliatoio) solo se c'è qualcosa
+  const usaU = [...dati.rows.values()].some((r) => r.has(colToIndex(LAYOUT.noteColAltre)));
+  const COLONNE = usaU ? [...COLONNE_BASE, LAYOUT.noteColAltre] : COLONNE_BASE;
 
   // Larghezze delle colonne come nel modello
   const larghezze = new Map<number, number>();
@@ -118,7 +121,7 @@ export async function generaPdfFoglio(xlsx: Uint8Array): Promise<Uint8Array> {
   y -= 10;
 
   // Tabella
-  const wModello = COLONNE.map((c) => larghezze.get(colToIndex(c)) ?? 14.43);
+  const wModello = COLONNE.map((c) => (c === LAYOUT.noteColAltre ? 22 : larghezze.get(colToIndex(c)) ?? 14.43));
   const scala = (W - 2 * M) / wModello.reduce((a, b) => a + b, 0);
   const wCol = wModello.map((w) => w * scala);
   const xCol = wCol.reduce<number[]>((acc, w, i) => (acc.push(i ? acc[i - 1] + wCol[i - 1] : M), acc), []);

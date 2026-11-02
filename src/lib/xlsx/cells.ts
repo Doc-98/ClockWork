@@ -10,7 +10,9 @@ export type CellContent =
   | { kind: 'number'; value: number }
   | { kind: 'text'; value: string }
   /** Mantiene la formula esistente e aggiorna solo il valore in cache. */
-  | { kind: 'formulaCache'; value: number };
+  | { kind: 'formulaCache'; value: number }
+  /** Formula nuova con il suo valore in cache (es. «SUM(H12:H42)») */
+  | { kind: 'formula'; formula: string; value: number };
 
 export interface CellEdit {
   content: CellContent;
@@ -63,6 +65,8 @@ function buildCell(ref: string, style: number | undefined, content: CellContent,
       if (!f) throw new Error(`La cella ${ref} non contiene una formula`);
       return `<c r="${ref}"${s}>${f}<v>${formatNumber(content.value)}</v></c>`;
     }
+    case 'formula':
+      return `<c r="${ref}"${s}><f>${escapeXml(content.formula)}</f><v>${formatNumber(content.value)}</v></c>`;
   }
 }
 

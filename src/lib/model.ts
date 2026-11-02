@@ -61,6 +61,43 @@ export const CALENDARIO_DEFAULT: ImpostazioniCalendario = {
   promemoria: [{ metodo: 'popup', minuti: 60 }],
 };
 
+/**
+ * Le mansioni sono le colonne del foglio ore della Leone (riga 11, da C a T): le ore di un turno
+ * finiscono nella colonna della sua mansione. Il nome è come scritto nel modello, rimesso in ordine.
+ */
+export const COLONNE_FOGLIO: { col: string; nome: string }[] = [
+  { col: 'C', nome: 'Assistente bagnanti' },
+  { col: 'D', nome: 'Assistente spogliatoio' },
+  { col: 'E', nome: 'Istruttore acquababy' },
+  { col: 'F', nome: 'Istruttore acquababy domenica' },
+  { col: 'G', nome: 'Istruttore ambientamento' },
+  { col: 'H', nome: 'Istruttore scuola nuoto' },
+  { col: 'I', nome: 'Istruttore nuoto adulti' },
+  { col: 'J', nome: 'Istruttore propaganda' },
+  { col: 'K', nome: 'Istruttore Progetto Nemo' },
+  { col: 'L', nome: 'Lezioni private individuali' },
+  { col: 'M', nome: 'Lezioni private coppie' },
+  { col: 'N', nome: 'Lezioni private da 3/4' },
+  { col: 'O', nome: 'Acquagym o gestanti' },
+  { col: 'P', nome: 'Assistente bagnanti nuoto curricolare' },
+  { col: 'Q', nome: 'Assistente spogliatoio nuoto curricolare' },
+  { col: 'R', nome: 'Nuoto curricolare (asilo, primaria, licei)' },
+  { col: 'S', nome: 'Ore gara propaganda' },
+  { col: 'T', nome: 'Ore feste compleanno' },
+];
+/** La mansione degli assistenti spogliatoio: quella dei turni del foglio turni e dei turni salvati prima delle mansioni */
+export const MANSIONE_ASSISTENTE = 'Q';
+
+/** Una mansione che svolgi: la colonna del foglio ore, un nome tuo (facoltativo) e la tariffa oraria */
+export interface Mansione {
+  col: string;
+  nome?: string;
+  /** €/h */
+  tariffa: number;
+}
+
+export type Profilo = 'assistente' | 'istruttore';
+
 export interface Turno {
   id: string;
   /** YYYY-MM-DD */
@@ -86,6 +123,10 @@ export interface Turno {
   promemoria?: Promemoria[];
   /** Evento su Google Calendar (in futuro) */
   calendarEventId?: string;
+  /** Colonna del foglio ore (C–T); assente = assistente spogliatoio (Q) */
+  mansione?: string;
+  /** Turni creati insieme con «ogni settimana fino al»: stesso id di serie */
+  serie?: string;
 }
 
 export interface Impostazioni {
@@ -95,24 +136,59 @@ export interface Impostazioni {
   alias: string[];
   /** Le schede Mese e Foglio ore mostrano lo stesso mese */
   meseLegato: boolean;
-  /** €/h, solo per te */
-  tariffa: number;
+  /** Assistente: turni dal foglio turni; istruttore: turni inseriti a mano, niente aree né foglio turni */
+  profilo: Profilo;
+  /** Le mansioni che svolgi, con la tariffa di ognuna (solo per te) */
+  mansioni: Mansione[];
   /** Mese dello stipendio (1–12) da cui la società toglie i 5 € del casellario; 0 = nessuno */
   casellario: number;
   aree: Partial<Record<Area, PersonalizzazioneArea>>;
   calendario: ImpostazioniCalendario;
 }
 
-export const IMPOSTAZIONI_DEFAULT: Impostazioni = { nome: '', alias: [], meseLegato: true, tariffa: 9, casellario: 10, aree: {}, calendario: CALENDARIO_DEFAULT };
+export const IMPOSTAZIONI_DEFAULT: Impostazioni = { nome: '', alias: [], meseLegato: true, profilo: 'assistente', mansioni: [{ col: MANSIONE_ASSISTENTE, tariffa: 9 }], casellario: 10, aree: {}, calendario: CALENDARIO_DEFAULT };
 
 /** Completa impostazioni salvate da versioni precedenti (o da un backup) con i valori predefiniti. */
-export function completaImpostazioni(imp?: Partial<Impostazioni>): Impostazioni {
+export function completaImpostazioni(imp?: Partial<Impostazioni> & { tariffa?: number }): Impostazioni {
+  const { tariffa, ...resto } = imp ?? {};
+  // Fino alla 0.10 c'era una sola tariffa, quella degli assistenti: diventa la mansione Q
+  const mansioni = Array.isArray(imp?.mansioni)
+    ? imp.mansioni.filter((m) => COLONNE_FOGLIO.some((c) => c.col === m?.col)).map((m) => ({ ...m, tariffa: Number(m.tariffa) || 0 }))
+    : [{ col: MANSIONE_ASSISTENTE, tariffa: typeof tariffa === 'number' ? tariffa : 9 }];
   return {
     ...IMPOSTAZIONI_DEFAULT,
-    ...imp,
+    ...resto,
+    profilo: imp?.profilo === 'istruttore' ? 'istruttore' : 'assistente',
+    mansioni,
     aree: { ...imp?.aree },
     calendario: { ...CALENDARIO_DEFAULT, ...imp?.calendario },
   };
+}
+
+/** Colonna del foglio ore di un turno */
+export const mansioneDi = (t: Pick<Turno, 'mansione'>): string => t.mansione ?? MANSIONE_ASSISTENTE;
+
+/** Nome di una mansione: quello che le hai dato, altrimenti quello del foglio ore */
+export function nomeMansione(col: string, imp?: Partial<Pick<Impostazioni, 'mansioni'>>): string {
+  return imp?.mansioni?.find((m) => m.col === col)?.nome?.trim() || COLONNE_FOGLIO.find((c) => c.col === col)?.nome || col;
+}
+
+/** Tariffa di una mansione; una mansione che non hai più (o mai avuta) vale come la prima delle tue */
+export function tariffaDi(col: string, imp: Pick<Impostazioni, 'mansioni'>): number {
+  return imp.mansioni.find((m) => m.col === col)?.tariffa ?? imp.mansioni[0]?.tariffa ?? 0;
+}
+
+/** Compenso di un elenco di turni (gli annullati non contano), ognuno alla tariffa della sua mansione */
+export function compensoTurni(turni: Turno[], imp: Pick<Impostazioni, 'mansioni'>): number {
+  return Math.round(turni.filter((t) => !t.annullato).reduce((s, t) => s + oreDi(t) * tariffaDi(mansioneDi(t), imp), 0) * 100) / 100;
+}
+
+/** Le aree (spogliatoi, atrio) hanno senso solo per i turni da assistente spogliatoio */
+export const conAree = (t: Pick<Turno, 'mansione'>) => mansioneDi(t) === MANSIONE_ASSISTENTE;
+
+/** Etichetta breve di un turno: l'area per gli assistenti, la mansione per gli altri */
+export function etichettaTurno(t: Pick<Turno, 'area' | 'mansione'>, imp?: Pick<Impostazioni, 'aree'> & Partial<Pick<Impostazioni, 'mansioni'>>): string {
+  return conAree(t) ? breveArea(t.area, imp) : nomeMansione(mansioneDi(t), imp);
 }
 
 export function oreDi(t: Pick<Turno, 'inizio' | 'fine'>): number {

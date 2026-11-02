@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
-import { generaFoglioOre, raggruppaPerGiorno, LAYOUT } from './genera';
+import { generaFoglioOre, raggruppaPerGiorno, LAYOUT, COLONNE_MANSIONI, colonnaNote } from './genera';
 import { XlsxPackage, listSheets } from '../xlsx/zip';
 import { readWorkbook } from '../xlsx/read';
 import { findCell } from '../xlsx/cells';
@@ -98,7 +98,7 @@ describe.skipIf(!haveTemplate)('generaFoglioOre sul modello della società', () 
   it('tutte le altre celle sono identiche al modello', () => {
     const before = sheetsBefore.find((s) => s.state === 'visible')!;
     const touched = new Set<string>(['E4', 'E5', 'F6', 'Q43', 'Q45']);
-    for (let r = 12; r <= 42; r++) for (const c of ['O', 'P', 'Q', 'R']) touched.add(`${c}${r}`);
+    for (let r = 12; r <= 42; r++) for (const c of COLONNE_MANSIONI) touched.add(`${c}${r}`);
     const colName = (i: number) => { let s = ''; while (i > 0) { const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; };
     const flat = (rows: Map<number, Map<number, unknown>>) => {
       const o: Record<string, unknown> = {};
@@ -122,5 +122,45 @@ describe.skipIf(!haveTemplate)('generaFoglioOre sul modello della società', () 
 
   it('rifiuta il 31 in un mese di 30 giorni', () => {
     expect(() => generaFoglioOre(template, { year: 2026, month: 9, voci: [{ day: 31, hours: 3 }] })).toThrow();
+  });
+});
+
+describe('colonna delle note', () => {
+  it('R se nel mese ci sono solo ore da assistente spogliatoio, altrimenti U', () => {
+    expect(colonnaNote([{ day: 1, hours: 3 }, { day: 2, hours: 3, col: 'Q' }])).toBe('R');
+    expect(colonnaNote([{ day: 1, hours: 3 }, { day: 2, hours: 2, col: 'H' }])).toBe('U');
+  });
+});
+
+describe.skipIf(!haveTemplate)('foglio ore di un istruttore (più mansioni)', () => {
+  const template = haveTemplate ? new Uint8Array(readFileSync(TEMPLATE)) : new Uint8Array();
+  const voci = [
+    { day: 3, hours: 2, col: 'H' },
+    { day: 3, hours: 1, col: 'L', note: 'sost marta scuola nuoto' },
+    { day: 5, hours: 1.5, col: 'H' },
+    { day: 10, hours: 3, col: 'R' },
+  ];
+  const out = haveTemplate ? generaFoglioOre(template, { year: 2026, month: 11, voci, nome: 'Anna Bianchi' }) : undefined!;
+  const after = haveTemplate ? readWorkbook(out.bytes).find((s) => s.state === 'visible')! : undefined!;
+  const cell = (col: string, row: number) => after.rows.get(row)?.get(col.charCodeAt(0) - 64) ?? null;
+
+  it('ogni mansione nella sua colonna, totale complessivo', () => {
+    expect(cell('H', 14)).toBe(2);
+    expect(cell('L', 14)).toBe(1);
+    expect(cell('H', 16)).toBe(1.5);
+    expect(cell('R', 21)).toBe(3);
+    expect(cell('Q', 14)).toBeNull();
+    expect(out.totaleOre).toBe(7.5);
+  });
+  it('note e sostituzioni in colonna U, con intestazione', () => {
+    expect(cell('U', 11)).toBe('NOTE (sostituzioni)');
+    expect(cell('U', 14)).toBe('sost marta scuola nuoto');
+  });
+  it('somme in riga 43 per le colonne usate', () => {
+    const pkg = XlsxPackage.open(out.bytes);
+    const sheet = pkg.text(listSheets(pkg).find((s) => s.state === 'visible')!.path);
+    expect(findCell(sheet, 'H43')).toContain('<f>SUM(H12:H42)</f><v>3.5</v>');
+    expect(findCell(sheet, 'L43')).toContain('<f>SUM(L12:L42)</f>');
+    expect(findCell(sheet, 'Q43')).toContain('<v>0</v>');
   });
 });
