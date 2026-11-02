@@ -76,12 +76,14 @@
   </div>
 
   <div class="field">
-    <span class="lbl" id="lbl-profilo">Lavori come</span>
+    <span class="lbl" id="lbl-profilo">Il tuo ruolo principale</span>
     <div class="seg profilo" role="group" aria-labelledby="lbl-profilo">
       <button aria-pressed={assistente} onclick={() => (profilo = 'assistente')}>Assistente spogliatoio</button>
       <button aria-pressed={!assistente} onclick={() => (profilo = 'istruttore')}>Istruttore</button>
     </div>
-    <p class="muted small nomargin">{assistente ? 'Prendo i tuoi turni dal foglio turni della società.' : 'Inserisci i tuoi turni a mano; il foglio ore lo compilo io.'} Puoi cambiarlo dalle impostazioni.</p>
+    <p class="muted small nomargin">{assistente
+      ? 'Prendo i tuoi turni dal foglio turni della società.'
+      : 'Inserisci i tuoi turni a mano; il foglio ore lo compilo io.'} È il ruolo proposto quando aggiungi un turno: se fai anche altro, aggiungi le altre mansioni {assistente ? 'dalle impostazioni' : 'qui sotto'} e le scegli turno per turno.</p>
   </div>
 
   <div class="card step" class:done={passo1}>
@@ -104,7 +106,7 @@
       <div class="n">{#if passo2Istruttore}<Icona nome="check" />{:else}2{/if}</div>
       <div class="body">
         <h2>Le tue mansioni</h2>
-        <p class="muted small">Sono le colonne del foglio ore della società. Scegli quelle che fai, con la tariffa oraria di ognuna.</p>
+        <p class="muted small">Sono le colonne del foglio ore della società. Scegli quelle che fai, con la tariffa oraria di ognuna: la principale è quella proposta per i nuovi turni.</p>
         <EditorMansioni {mansioni} salva={(m) => (mansioni = m)} />
       </div>
     </div>

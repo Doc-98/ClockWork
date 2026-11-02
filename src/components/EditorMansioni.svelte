@@ -29,6 +29,10 @@
     const v = (e.currentTarget as HTMLInputElement).value.trim();
     cambia(i, { nome: v && v !== nomeColonna(mansioni[i].col) ? v : undefined });
   }
+  // La prima dell'elenco è quella proposta quando crei un turno
+  function primaria(i: number) {
+    salva([mansioni[i], ...mansioni.filter((_, j) => j !== i)]);
+  }
   function togli(i: number) {
     salva(mansioni.filter((_, j) => j !== i));
   }
@@ -49,19 +53,21 @@
 <div class="mansioni">
   {#each mansioni as m, i (m.col)}
     <div class="mans">
-      <label class="field">
-        <span class="lbl">Colonna {m.col} del foglio ore</span>
-        <input class="inp" value={m.nome ?? ''} placeholder={nomeColonna(m.col)} aria-label="Nome della mansione, colonna {m.col}" onchange={(e) => nome(i, e)} />
-      </label>
+      <div class="testa-mans">
+        <span class="lbl">Colonna {m.col}</span>
+        {#if i === 0 && mansioni.length > 1}<span class="tag t-soft">principale</span>{/if}
+        {#if mansioni.length > 1}
+          <button class="icon-togli" aria-label="Togli {m.nome || nomeColonna(m.col)}" onclick={() => togli(i)}><Icona nome="chiudi" /></button>
+        {/if}
+      </div>
+      <input class="inp" value={m.nome ?? ''} placeholder={nomeColonna(m.col)} aria-label="Nome della mansione, colonna {m.col}" onchange={(e) => nome(i, e)} />
       <div class="riga">
         <label class="tariffa">
           <span class="sr">Tariffa di {m.nome || nomeColonna(m.col)}</span>
           <input class="inp m" inputmode="decimal" value={testoTariffa(m.tariffa)} onchange={(e) => tariffa(i, e)} />
           <span class="unita">€/h</span>
         </label>
-        {#if mansioni.length > 1}
-          <button class="link togli" onclick={() => togli(i)}><Icona nome="chiudi" /> Togli</button>
-        {/if}
+        {#if i > 0}<button class="link piccolo" onclick={() => primaria(i)}>Rendi principale</button>{/if}
       </div>
     </div>
   {/each}
@@ -99,8 +105,11 @@
   .tariffa { display: flex; align-items: center; gap: var(--space-8); }
   .tariffa .inp { width: 96px; text-align: right; }
   .unita { color: var(--muted); font-size: var(--text-md); white-space: nowrap; }
-  .togli { font-size: var(--text-sm); gap: var(--space-4); color: var(--muted); white-space: nowrap; }
-  .togli :global(.ic) { width: 16px; height: 16px; }
+  .testa-mans { display: flex; align-items: center; gap: var(--space-8); min-height: 28px; }
+  .testa-mans .tag { flex-shrink: 0; height: 22px; font-size: var(--text-2xs); }
+  .icon-togli { margin-left: auto; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; margin-right: calc(var(--space-8) * -1); border: none; background: none; color: var(--muted); border-radius: var(--radius-sm); cursor: pointer; }
+  .icon-togli :global(.ic) { width: 18px; height: 18px; }
+  .piccolo { font-size: var(--text-sm); white-space: nowrap; }
   .corto { padding: 0 var(--space-16); height: 46px; white-space: nowrap; }
   .lbl { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }

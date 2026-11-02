@@ -47,7 +47,9 @@
     const imp = { ...dati.impostazioni, profilo };
     if (profilo === 'assistente') {
       // Gli assistenti prendono i turni dal foglio turni: serve la mansione Q e un nome con cui cercarsi
-      if (!imp.mansioni.some((m) => m.col === MANSIONE_ASSISTENTE)) imp.mansioni = [{ col: MANSIONE_ASSISTENTE, tariffa: 9 }, ...imp.mansioni];
+      // e diventa la proposta per i nuovi turni (la prima dell'elenco)
+      const q = imp.mansioni.find((m) => m.col === MANSIONE_ASSISTENTE) ?? { col: MANSIONE_ASSISTENTE, tariffa: 9 };
+      imp.mansioni = [q, ...imp.mansioni.filter((m) => m.col !== MANSIONE_ASSISTENTE)];
       if (!imp.alias.length && imp.nome.trim()) imp.alias = [imp.nome.trim().split(/\s+/)[0]];
     }
     dati.setImpostazioni(imp);
@@ -149,14 +151,14 @@
         {/if}
       </div>
       <div class="voce-corpo profilo">
-        <span class="lbl" id="lbl-profilo">Lavori come</span>
+        <span class="lbl" id="lbl-profilo">Ruolo principale</span>
         <div class="seg" style="grid-template-columns: repeat(2, minmax(0, 1fr))" role="group" aria-labelledby="lbl-profilo">
           <button aria-pressed={dati.impostazioni.profilo === 'assistente'} onclick={() => setProfilo('assistente')}>Assistente spogliatoio</button>
           <button aria-pressed={dati.impostazioni.profilo === 'istruttore'} onclick={() => setProfilo('istruttore')}>Istruttore</button>
         </div>
         <p class="muted small nomargin">{dati.impostazioni.profilo === 'assistente'
           ? 'Prendo i tuoi turni dal foglio turni della società; quelli in più li aggiungi a mano.'
-          : 'Inserisci i tuoi turni a mano, scegliendo la mansione di ognuno. Niente foglio turni.'}</p>
+          : 'Inserisci i tuoi turni a mano.'} Non ti limita: in «Mansioni e tariffe» aggiungi tutto ciò che fai e lo scegli turno per turno.</p>
       </div>
       <div>
         <button class="voce" aria-expanded={aperta === 'mansioni'} onclick={() => apri('mansioni')}>
@@ -192,7 +194,7 @@
     </div>
   </section>
 
-  {#if dati.impostazioni.profilo === 'assistente'}
+  {#if dati.impostazioni.profilo === 'assistente' || dati.impostazioni.mansioni.some((m) => m.col === MANSIONE_ASSISTENTE)}
   <section class="gruppo">
     <h2 class="lbl">Turni</h2>
     <div class="card voci">

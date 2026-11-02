@@ -21,7 +21,8 @@
   let data = $state(esistente?.data ?? r.data ?? isoDa(new Date()));
   // Mansione (colonna del foglio ore): quella del turno, altrimenti la prima delle tue
   const imp = dati.impostazioni;
-  let mansione = $state(esistente?.mansione ?? (imp.profilo === 'istruttore' ? imp.mansioni[0]?.col : undefined) ?? MANSIONE_ASSISTENTE);
+  // Per un turno nuovo si propone la prima delle tue mansioni (quella principale)
+  let mansione = $state(esistente ? (esistente.mansione ?? MANSIONE_ASSISTENTE) : (imp.mansioni[0]?.col ?? MANSIONE_ASSISTENTE));
   const opzioniMansione = $derived([...new Set([...imp.mansioni.map((m) => m.col), mansione])]);
   // La scelta serve se hai più mansioni (o una che non è quella degli assistenti); i turni del foglio sono da assistente
   const sceltaMansione = $derived(esistente?.origine !== 'import' && (imp.mansioni.length > 1 || mansione !== MANSIONE_ASSISTENTE));
@@ -30,7 +31,7 @@
   // Ripetizione: solo per un turno nuovo
   let ripeti = $state(false);
   let finoAl = $state('');
-  let area = $state<Area>(esistente?.area ?? (imp.profilo === 'istruttore' ? 'altro' : 'maschile'));
+  let area = $state<Area>(esistente?.area ?? (imp.mansioni[0]?.col && imp.mansioni[0].col !== MANSIONE_ASSISTENTE ? 'altro' : 'maschile'));
   let postazione = $state<number | undefined>(esistente?.postazione);
   let inizio = $state(esistente ? hhmm(esistente.inizio).padStart(5, '0') : '');
   let fine = $state(esistente ? hhmm(esistente.fine).padStart(5, '0') : '');

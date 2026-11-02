@@ -96,7 +96,7 @@
       {/each}
     </div>
     <div class="legenda">
-      {#if dati.impostazioni.profilo === 'assistente'}
+      {#if dati.impostazioni.profilo === 'assistente' || dati.impostazioni.mansioni.some((m) => m.col === 'Q')}
         <span><i style="--c: var(--area-m)"></i>{breveArea('maschile', dati.impostazioni)}</span>
         <span><i style="--c: var(--area-f)"></i>{breveArea('femminile', dati.impostazioni)}</span>
         <span><i style="--c: var(--area-p)"></i>{breveArea('piccoli', dati.impostazioni)}</span>
