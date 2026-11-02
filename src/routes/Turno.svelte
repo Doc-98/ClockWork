@@ -2,7 +2,7 @@
   import { untrack } from 'svelte';
   import { dati } from '../lib/dati.svelte';
   import { router, type Rotta } from '../lib/router.svelte';
-  import { AREE, daHHMM, type Promemoria, hhmm, isoDa, dataDa, notaSostituzione, nuovoId, nomeArea, breveArea, oreDi, segnaModifica, nomeMansione, MANSIONE_ASSISTENTE, type Area, type Turno } from '../lib/model';
+  import { AREE, daHHMM, type Promemoria, hhmm, isoDa, dataDa, notaSostituzione, nuovoId, nomeArea, breveArea, oreDi, segnaModifica, nomeMansione, MANSIONE_ASSISTENTE, turniDellaSerie, modificaSerie, eliminaSerie, type AmbitoSerie, type Area, type Turno } from '../lib/model';
   import { turniDelGiornoDalFile } from '../lib/turni/importa';
   import { normalizzaNome } from '../lib/turni/parse';
   import { formatOre, oreInParole } from '../lib/ore';
@@ -145,6 +145,12 @@
       nome: nomeTurno.trim() || undefined,
       promemoria: promemoriaPropri ? $state.snapshot(promemoria) : undefined,
     };
+    if (esistente && inSerie) {
+      // Fa parte di una serie: chiedo se la modifica vale anche per gli altri turni
+      inSospeso = t;
+      chiedi = 'salva';
+      return;
+    }
     if (esistente) dati.salvaTurno(segnaModifica($state.snapshot(esistente) as Turno, t));
     else if (date.length > 1) {
       // Ogni settimana: un turno per data, legati dallo stesso id di serie
@@ -156,6 +162,10 @@
 
   function elimina() {
     if (!esistente) return;
+    if (inSerie) {
+      chiedi = 'elimina';
+      return;
+    }
     if (!confermaElimina) {
       confermaElimina = true;
       return;
@@ -163,7 +173,48 @@
     dati.eliminaTurno(esistente.id);
     router.indietro(`#/mese/${esistente.data.slice(0, 7)}`);
   }
+
+  // Serie («ogni settimana fino al»): salvando o eliminando si sceglie quali turni toccare
+  const serie = esistente ? turniDellaSerie(dati.turni, esistente) : [];
+  const inSerie = serie.length > 1;
+  const daQui = esistente ? serie.filter((x) => x.data >= esistente.data).length : 0;
+  const GIORNI_SETT_SERIE = ['domenica', 'lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato'];
+  const dataBreve = (iso: string) => dataDa(iso).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' });
+  const testoSerie = inSerie
+    ? `Si ripete ogni ${GIORNI_SETT_SERIE[dataDa(serie[0].data).getDay()]}: ${serie.length} turni dal ${dataBreve(serie[0].data)} al ${dataBreve(serie.at(-1)!.data)}.`
+    : '';
+  let chiedi = $state<'salva' | 'elimina' | undefined>();
+  let inSospeso: Turno | undefined;
+
+  function confermaSerie(ambito: AmbitoSerie) {
+    if (!esistente) return;
+    const orig = $state.snapshot(esistente) as Turno;
+    if (chiedi === 'salva' && inSospeso) {
+      dati.setTurni(modificaSerie(dati.turni, orig, inSospeso, ambito));
+      router.indietro(`#/mese/${inSospeso.data.slice(0, 7)}?g=${inSospeso.data}`);
+    } else if (chiedi === 'elimina') {
+      dati.setTurni(eliminaSerie(dati.turni, orig, ambito));
+      router.indietro(`#/mese/${orig.data.slice(0, 7)}`);
+    }
+    chiedi = undefined;
+  }
 </script>
+
+{#if chiedi}
+  <div class="velo" role="presentation" onclick={() => (chiedi = undefined)}></div>
+  <div class="foglio card" role="dialog" aria-modal="true" aria-labelledby="titolo-serie">
+    <h2 id="titolo-serie">{chiedi === 'salva' ? 'Salvo la modifica su…' : 'Elimino…'}</h2>
+    <p class="muted small nomargin">{testoSerie}</p>
+    <div class="scelte">
+      <button class="btn btn-secondary" onclick={() => confermaSerie('solo')}>Solo questo turno</button>
+      {#if daQui > 1 && daQui < serie.length}
+        <button class="btn btn-secondary" onclick={() => confermaSerie('successivi')}>Questo e i successivi ({daQui})</button>
+      {/if}
+      <button class="btn {chiedi === 'elimina' ? 'btn-danger' : 'btn-primary'}" onclick={() => confermaSerie('tutti')}>Tutti i {serie.length} turni della serie</button>
+    </div>
+    <button class="link annulla-serie" onclick={() => (chiedi = undefined)}>Annulla</button>
+  </div>
+{/if}
 
 <section class="page">
   <header class="bar">
@@ -171,6 +222,10 @@
     <h1>{titolo}</h1>
     <button class="link" disabled={!salvabile} onclick={salva}>Salva</button>
   </header>
+
+  {#if inSerie}
+    <p class="muted small nomargin">{testoSerie} Salvando o eliminando scegli se vale anche per gli altri.</p>
+  {/if}
 
   {#if esistente?.origine === 'import'}
     <p class="muted small nomargin">
@@ -303,6 +358,13 @@
 </section>
 
 <style>
+  .velo { position: fixed; inset: 0; z-index: 40; background: rgb(0 0 0 / 0.35); }
+  .foglio { position: fixed; left: 0; right: 0; bottom: 0; z-index: 41; max-width: 480px; margin: 0 auto; display: flex; flex-direction: column; gap: var(--space-10);
+    padding: var(--space-20) var(--space-20) calc(var(--safe-bottom) + var(--space-16)); border-radius: var(--radius-xl) var(--radius-xl) 0 0; border-bottom: none; }
+  .foglio h2 { margin: 0; font-size: var(--text-lg); }
+  .scelte { display: flex; flex-direction: column; gap: var(--space-8); margin-top: var(--space-4); }
+  .scelte .btn { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .annulla-serie { align-self: center; }
   .tipo, .due-seg { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .aree { grid-template-columns: repeat(5, minmax(0, 1fr)); }
   .aree button { font-size: var(--text-xs); }

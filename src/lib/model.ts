@@ -251,3 +251,47 @@ export function segnaModifica(prima: Turno, dopo: Turno): Turno {
 export function ordinaTurni(a: Turno, b: Turno): number {
   return a.data.localeCompare(b.data) || a.inizio - b.inizio;
 }
+
+// ---------------------------------------------------------------------------
+// Serie di turni («ogni settimana fino al»)
+
+/** Quali turni della serie tocca una modifica: solo questo, questo e i successivi, tutti */
+export type AmbitoSerie = 'solo' | 'successivi' | 'tutti';
+
+/** I turni della stessa serie, in ordine di data */
+export function turniDellaSerie(turni: Turno[], t: Pick<Turno, 'serie'>): Turno[] {
+  return t.serie ? turni.filter((x) => x.serie === t.serie).sort(ordinaTurni) : [];
+}
+
+const nellAmbito = (x: Turno, originale: Turno, ambito: AmbitoSerie) =>
+  x.serie === originale.serie && (ambito === 'tutti' || (ambito === 'successivi' && x.data >= originale.data) || x.id === originale.id);
+
+/** I campi che una modifica porta sugli altri turni della serie (la data si sposta dello stesso numero di giorni) */
+const CAMPI_SERIE = ['area', 'postazione', 'inizio', 'fine', 'mansione', 'sostituisce', 'nota', 'nome', 'promemoria', 'annullato'] as const;
+
+/**
+ * Applica a una serie la modifica fatta su uno dei suoi turni: solo i campi cambiati, così ciò che
+ * hai ritoccato a mano sugli altri turni (per esempio una nota) resta, se non lo stai cambiando adesso.
+ * Se hai cambiato giorno, gli altri si spostano dello stesso numero di giorni.
+ */
+export function modificaSerie(turni: Turno[], originale: Turno, modificato: Turno, ambito: AmbitoSerie): Turno[] {
+  if (ambito === 'solo' || !originale.serie) return turni.map((x) => (x.id === originale.id ? modificato : x));
+  const cambiati = CAMPI_SERIE.filter((k) => JSON.stringify(originale[k]) !== JSON.stringify(modificato[k]));
+  const giorni = Math.round((dataDa(modificato.data).getTime() - dataDa(originale.data).getTime()) / 86400000);
+  return turni.map((x) => {
+    if (x.id === originale.id) return modificato;
+    if (!nellAmbito(x, originale, ambito)) return x;
+    const y: Turno = { ...x };
+    for (const k of cambiati) (y as unknown as Record<string, unknown>)[k] = modificato[k];
+    if (giorni) {
+      const d = dataDa(x.data);
+      y.data = isoDa(new Date(d.getFullYear(), d.getMonth(), d.getDate() + giorni));
+    }
+    return y;
+  });
+}
+
+/** Elimina un turno della serie, quelli dopo o tutta la serie */
+export function eliminaSerie(turni: Turno[], originale: Turno, ambito: AmbitoSerie): Turno[] {
+  return turni.filter((x) => !nellAmbito(x, originale, ambito));
+}
