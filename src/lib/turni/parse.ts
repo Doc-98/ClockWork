@@ -295,7 +295,7 @@ function turniDaRiga(c: Colonne, cells: Map<number, CellValue>, data: string, fo
   return out;
 }
 
-/** I turni di una persona, dati i suoi nomi possibili nel foglio (es. ["Vincenzo"]). */
+/** I turni di una persona, dati i suoi nomi possibili nel foglio (es. ["Mario"]). */
 export function turniDi(turni: TurnoLetto[], alias: string[]): TurnoLetto[] {
   const set = new Set(alias.map(normalizzaNome).filter(Boolean));
   return turni.filter((t) => set.has(normalizzaNome(t.nome)));

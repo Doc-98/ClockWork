@@ -28,7 +28,9 @@
 
   // Nome e cognome (foglio ore)
   let nome = $state(dati.impostazioni.nome);
-  const nomeCambiato = $derived(nome.trim() !== dati.impostazioni.nome.trim() && !!nome.trim());
+  // Va in testa al foglio ore: servono nome e cognome
+  const soloNome = $derived(nome.trim() !== '' && nome.trim().split(/\s+/).length < 2);
+  const nomeCambiato = $derived(nome.trim() !== dati.impostazioni.nome.trim() && !!nome.trim() && !soloNome);
   async function salvaNome() {
     await dati.setImpostazioni({ ...dati.impostazioni, nome: nome.trim() });
     aperta = undefined;
@@ -146,7 +148,11 @@
           <div class="voce-corpo">
             <label class="field"><span class="lbl">Nome e cognome</span>
               <span class="row"><input class="inp grow" bind:value={nome} autocomplete="name" /><button class="btn btn-secondary corto" disabled={!nomeCambiato} onclick={salvaNome}>Salva</button></span></label>
-            <p class="muted small nomargin">Lo scrivo in testa al foglio ore di ogni mese.</p>
+            {#if soloNome}
+              <p class="msg err nomargin" role="alert">Scrivi nome e cognome: li riporto così in testa al foglio ore.</p>
+            {:else}
+              <p class="muted small nomargin">Lo scrivo in testa al foglio ore di ogni mese.</p>
+            {/if}
           </div>
         {/if}
       </div>

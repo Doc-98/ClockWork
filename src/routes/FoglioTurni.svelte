@@ -171,7 +171,7 @@
     <div class="card nome-box">
       <label class="field">
         <span class="lbl">Il tuo nome nel foglio turni</span>
-        <span class="row"><input class="inp grow" bind:value={alias} placeholder="es. Vincenzo" autocomplete="given-name" /><button class="btn btn-secondary" disabled={!aliasCambiato || !aliasNuovi.length} onclick={salvaAlias}>Salva</button></span>
+        <span class="row"><input class="inp grow" bind:value={alias} placeholder="es. Mario" autocomplete="given-name" /><button class="btn btn-secondary" disabled={!aliasCambiato || !aliasNuovi.length} onclick={salvaAlias}>Salva</button></span>
       </label>
       <span class="muted small">Se nel foglio usano più varianti, separale con una virgola.{fonte.stato ? ' Cambiandolo, ricontrollo il foglio.' : ''}</span>
     </div>

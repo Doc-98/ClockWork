@@ -25,6 +25,8 @@
   });
   const aliasLista = $derived(alias.split(',').map((s) => s.trim()).filter(Boolean));
   const passo1 = $derived(nome.trim().split(/\s+/).length >= 2 && (!assistente || aliasLista.length > 0));
+  // Solo il nome (una parola): avviso perché serve anche il cognome
+  const soloNome = $derived(nome.trim() !== '' && nome.trim().split(/\s+/).length < 2);
   const passo2Istruttore = $derived(mansioni.length > 0);
   const pronto = $derived(passo1 && (assistente || passo2Istruttore));
 
@@ -91,11 +93,15 @@
     <div class="body">
       <h2>Come ti chiami</h2>
       <label class="field"><span class="lbl">Nome e cognome</span>
-        <input class="inp" bind:value={nome} placeholder="es. Vincenzo Donatelli" autocomplete="name" /></label>
-      <p class="muted small">Va in testa al foglio ore di ogni mese.</p>
+        <input class="inp" bind:value={nome} placeholder="es. Mario Rossi" autocomplete="name" /></label>
+      {#if soloNome}
+        <p class="msg err nomargin" role="alert">Scrivi nome e cognome: li riporto così in testa al foglio ore di ogni mese.</p>
+      {:else}
+        <p class="muted small">Va in testa al foglio ore di ogni mese, quindi servono nome e cognome.</p>
+      {/if}
       {#if assistente}
         <label class="field"><span class="lbl">Nel foglio turni compari come</span>
-          <input class="inp" bind:value={alias} oninput={() => (aliasToccato = true)} placeholder="es. Vincenzo" /></label>
+          <input class="inp" bind:value={alias} oninput={() => (aliasToccato = true)} placeholder="es. Mario" /></label>
         <p class="muted small">Se usano più varianti, separale con una virgola.</p>
       {/if}
     </div>
@@ -106,7 +112,7 @@
       <div class="n">{#if passo2Istruttore}<Icona nome="check" />{:else}2{/if}</div>
       <div class="body">
         <h2>Le tue mansioni</h2>
-        <p class="muted small">Sono le colonne del foglio ore della società. Scegli quelle che fai, con la tariffa oraria di ognuna: la principale è quella proposta per i nuovi turni.</p>
+        <p class="muted small">Scegli cosa fai alla Leone e quanto ti pagano all'ora. Le ore di ogni turno le metto io al posto giusto nel foglio ore.</p>
         <EditorMansioni {mansioni} salva={(m) => (mansioni = m)} />
       </div>
     </div>

@@ -132,7 +132,7 @@ export interface Turno {
 export interface Impostazioni {
   /** Nome e cognome, scritto in testa al foglio ore (E5) */
   nome: string;
-  /** Come compari nel foglio turni, es. ["Vincenzo"] */
+  /** Come compari nel foglio turni, es. ["Mario"] */
   alias: string[];
   /** Le schede Mese e Foglio ore mostrano lo stesso mese */
   meseLegato: boolean;
