@@ -29,8 +29,11 @@
   // Nome e cognome (foglio ore)
   let nome = $state(dati.impostazioni.nome);
   // Va in testa al foglio ore: servono nome e cognome
-  const soloNome = $derived(nome.trim() !== '' && nome.trim().split(/\s+/).length < 2);
-  const nomeCambiato = $derived(nome.trim() !== dati.impostazioni.nome.trim() && !!nome.trim() && !soloNome);
+  const unaParola = $derived(nome.trim() !== '' && nome.trim().split(/\s+/).length < 2);
+  // L'avviso compare solo dopo che hai lasciato il campo, non mentre scrivi
+  let nomeLasciato = $state(false);
+  const soloNome = $derived(nomeLasciato && unaParola);
+  const nomeCambiato = $derived(nome.trim() !== dati.impostazioni.nome.trim() && !!nome.trim() && !unaParola);
   async function salvaNome() {
     await dati.setImpostazioni({ ...dati.impostazioni, nome: nome.trim() });
     aperta = undefined;
@@ -147,7 +150,7 @@
         {#if aperta === 'nome'}
           <div class="voce-corpo">
             <label class="field"><span class="lbl">Nome e cognome</span>
-              <span class="row"><input class="inp grow" bind:value={nome} autocomplete="name" /><button class="btn btn-secondary corto" disabled={!nomeCambiato} onclick={salvaNome}>Salva</button></span></label>
+              <span class="row"><input class="inp grow" bind:value={nome} autocomplete="name" onblur={() => (nomeLasciato = true)} /><button class="btn btn-secondary corto" disabled={!nomeCambiato} onclick={salvaNome}>Salva</button></span></label>
             {#if soloNome}
               <p class="msg err nomargin" role="alert">Scrivi nome e cognome: li riporto così in testa al foglio ore.</p>
             {:else}

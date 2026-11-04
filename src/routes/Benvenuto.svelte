@@ -26,7 +26,9 @@
   const aliasLista = $derived(alias.split(',').map((s) => s.trim()).filter(Boolean));
   const passo1 = $derived(nome.trim().split(/\s+/).length >= 2 && (!assistente || aliasLista.length > 0));
   // Solo il nome (una parola): avviso perché serve anche il cognome
-  const soloNome = $derived(nome.trim() !== '' && nome.trim().split(/\s+/).length < 2);
+  // L'avviso compare solo dopo che hai lasciato il campo, non mentre scrivi
+  let nomeLasciato = $state(false);
+  const soloNome = $derived(nomeLasciato && nome.trim() !== '' && nome.trim().split(/\s+/).length < 2);
   const passo2Istruttore = $derived(mansioni.length > 0);
   const pronto = $derived(passo1 && (assistente || passo2Istruttore));
 
@@ -93,7 +95,7 @@
     <div class="body">
       <h2>Come ti chiami</h2>
       <label class="field"><span class="lbl">Nome e cognome</span>
-        <input class="inp" bind:value={nome} placeholder="es. Mario Rossi" autocomplete="name" /></label>
+        <input class="inp" bind:value={nome} placeholder="es. Mario Rossi" autocomplete="name" onblur={() => (nomeLasciato = true)} /></label>
       {#if soloNome}
         <p class="msg err nomargin" role="alert">Scrivi nome e cognome: li riporto così in testa al foglio ore di ogni mese.</p>
       {:else}

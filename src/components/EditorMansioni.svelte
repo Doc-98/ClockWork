@@ -122,7 +122,7 @@
         <div class="riga">
           <label class="tariffa">
             <span class="sr">Tariffa oraria di {nomeBase(nuova)}</span>
-            <input class="inp m" inputmode="decimal" bind:value={nuovaTariffa} placeholder="es. 15" onkeydown={(e) => e.key === 'Enter' && aggiungi()} />
+            <input class="inp m" inputmode="decimal" bind:value={nuovaTariffa} placeholder="15" onkeydown={(e) => e.key === 'Enter' && aggiungi()} />
             <span class="unita">€/h</span>
           </label>
           <button class="btn btn-secondary corto" disabled={!nuovaOk} onclick={aggiungi}>Aggiungi</button>
