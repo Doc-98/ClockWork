@@ -46,6 +46,11 @@
       : `${dati.impostazioni.mansioni.length} mansioni · tariffe solo per te`,
   );
   const salvaMansioni = (mansioni: Mansione[]) => dati.setImpostazioni({ ...dati.impostazioni, mansioni });
+  // Cambio del tipo di paga: cambiano anche i turni della mansione dal mese corrente
+  async function salvaMansioniETurni(mansioni: Mansione[], turni: Turno[]) {
+    await dati.setImpostazioni({ ...dati.impostazioni, mansioni });
+    await dati.setTurni(turni);
+  }
 
   // Assistente o istruttore: cosa ti serve dell'app
   function setProfilo(profilo: Profilo) {
@@ -177,7 +182,7 @@
         </button>
         {#if aperta === 'mansioni'}
           <div class="voce-corpo">
-            <EditorMansioni mansioni={dati.impostazioni.mansioni} salva={salvaMansioni} />
+            <EditorMansioni mansioni={dati.impostazioni.mansioni} salva={salvaMansioni} turni={dati.turni} salvaTurni={salvaMansioniETurni} />
           </div>
         {/if}
       </div>

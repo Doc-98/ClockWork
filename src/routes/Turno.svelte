@@ -2,10 +2,10 @@
   import { untrack } from 'svelte';
   import { dati } from '../lib/dati.svelte';
   import { router, type Rotta } from '../lib/router.svelte';
-  import { AREE, daHHMM, type Promemoria, hhmm, isoDa, dataDa, notaSostituzione, nuovoId, nomeArea, breveArea, oreDi, segnaModifica, nomeMansione, MANSIONE_ASSISTENTE, turniDellaSerie, modificaSerie, eliminaSerie, type AmbitoSerie, type Area, type Turno } from '../lib/model';
+  import { AREE, daHHMM, type Promemoria, hhmm, isoDa, dataDa, notaSostituzione, nuovoId, nomeArea, breveArea, oreDi, segnaModifica, nomeMansione, MANSIONE_ASSISTENTE, turniDellaSerie, modificaSerie, eliminaSerie, aTurno, tariffaDi, turniProposti, type AmbitoSerie, type Area, type Turno } from '../lib/model';
   import { turniDelGiornoDalFile } from '../lib/turni/importa';
   import { normalizzaNome } from '../lib/turni/parse';
-  import { formatOre, oreInParole } from '../lib/ore';
+  import { formatOre, formatEuro, oreInParole } from '../lib/ore';
   import Icona from '../components/Icona.svelte';
   import EditorPromemoria from '../components/EditorPromemoria.svelte';
   import { titoloTurno, promemoriaDi, testoPromemoria } from '../lib/gcal/eventi';
@@ -87,6 +87,18 @@
   const minFin = $derived(daHHMM(fine));
   const ore = $derived(minIni !== null && minFin !== null && minFin > minIni ? oreDi({ inizio: minIni, fine: minFin }) : null);
 
+  // Mansioni pagate a turno: nel foglio ore va il numero di turni fatti in quell'orario, non le ore
+  const pagataATurno = $derived(aTurno(mansione, imp, data.slice(0, 7)));
+  // Finché non lo tocchi, il numero segue quello dell'ultima volta con la stessa mansione e lo stesso orario
+  let turniToccati = $state(!!esistente?.turni);
+  let nTurniScelto = $state(esistente?.turni ?? 1);
+  const nTurni = $derived(turniToccati ? nTurniScelto : turniProposti(dati.turni.filter((t) => t.id !== esistente?.id), mansione, minIni, minFin));
+  function cambiaTurni(delta: number) {
+    nTurniScelto = Math.min(30, Math.max(1, nTurni + delta));
+    turniToccati = true;
+  }
+  const euroTurni = $derived(Math.round(nTurni * tariffaDi(mansione, imp, data.slice(0, 7)) * 100) / 100);
+
   // Come si chiamerebbe il turno senza un nome suo, e quali promemoria erediterebbe
   const bozza = $derived<Turno>({
     id: 'bozza', data, area: conAree ? area : 'altro', postazione: area === 'altro' || !conAree ? undefined : postazione, inizio: minIni ?? 0, fine: minFin ?? 0, origine: 'manuale',
@@ -107,7 +119,7 @@
   const titolo = nuovo ? (r.tipo === 'sost' ? 'Nuova sostituzione' : 'Nuovo turno') : esistente!.sostituisce ? 'Sostituzione' : esistente!.origine === 'import' ? 'Turno dal foglio' : 'Turno';
 
   // «Salva» si accende solo quando c'è qualcosa da salvare (e di valido)
-  const statoForm = () => JSON.stringify({ data, mansione, ripeti, finoAl, area, postazione, inizio, fine, sost, sostituisce: sostituisce.trim(), nota: nota.trim(), annullato, nomeTurno: nomeTurno.trim(), promemoriaPropri, promemoria });
+  const statoForm = () => JSON.stringify({ data, mansione, nTurni: pagataATurno ? nTurni : 0, ripeti, finoAl, area, postazione, inizio, fine, sost, sostituisce: sostituisce.trim(), nota: nota.trim(), annullato, nomeTurno: nomeTurno.trim(), promemoriaPropri, promemoria });
   const iniziale = statoForm();
   const cambiato = $derived(statoForm() !== iniziale);
   // Le date della ripetizione: ogni 7 giorni da quella scelta fino al «fino al» compreso (al massimo un anno)
@@ -145,6 +157,7 @@
       annullato: annullato || undefined,
       nome: nomeTurno.trim() || undefined,
       promemoria: promemoriaPropri ? $state.snapshot(promemoria) : undefined,
+      turni: pagataATurno ? nTurni : undefined,
     };
     if (esistente && inSerie) {
       // Fa parte di una serie: chiedo se la modifica vale anche per gli altri turni
@@ -307,9 +320,28 @@
       <input class="inp m" type="time" bind:value={inizio} aria-label="Inizio" />
       <input class="inp m" type="time" bind:value={fine} aria-label="Fine" />
     </div>
-    <div class="durata"><span class="muted">Nel foglio ore</span><span class="m">{ore !== null ? (Number.isInteger(ore) ? `${formatOre(ore)} h` : `${formatOre(ore)} h · ${oreInParole(ore)}`) : '—'}</span></div>
+    {#if pagataATurno}
+      <p class="muted small nomargin">Serve al calendario e ai promemoria.</p>
+    {:else}
+      <div class="durata"><span class="muted">Nel foglio ore</span><span class="m">{ore !== null ? (Number.isInteger(ore) ? `${formatOre(ore)} h` : `${formatOre(ore)} h · ${oreInParole(ore)}`) : '—'}</span></div>
+    {/if}
     {#if erroreOrario}<p class="msg err">{erroreOrario}</p>{/if}
   </div>
+
+  {#if pagataATurno}
+    <div class="field">
+      <div class="conta">
+        <span class="lbl conta-lbl" id="lbl-turni">Turni in questo orario</span>
+        <div class="stepper" role="group" aria-labelledby="lbl-turni">
+          <button class="passo" aria-label="Un turno in meno" disabled={nTurni <= 1} onclick={() => cambiaTurni(-1)}><Icona nome="meno" /></button>
+          <span class="conta-n" aria-live="polite"><span class="d">{nTurni}</span> {nTurni === 1 ? 'turno' : 'turni'}</span>
+          <button class="passo" aria-label="Un turno in più" onclick={() => cambiaTurni(1)}><Icona nome="piu" /></button>
+        </div>
+        <div class="conta-foot"><span>Nel foglio ore</span><span class="m">{nTurni} {nTurni === 1 ? 'turno' : 'turni'}{euroTurni ? ` · ${formatEuro(euroTurni)}` : ''}</span></div>
+      </div>
+      <p class="muted small nomargin">Contali come li segni nel foglio ore. La prossima volta ti propongo lo stesso numero per questo orario.</p>
+    </div>
+  {/if}
 
   <div class="card voci">
     <button class="voce" aria-expanded={altro} onclick={() => (altro = !altro)}>
@@ -371,4 +403,13 @@
   .aree button { font-size: var(--text-xs); }
   .durata { display: flex; justify-content: space-between; font-size: var(--text-sm); }
   .durata .m { font-weight: 600; }
+  .conta { display: flex; flex-direction: column; gap: var(--space-10); padding: var(--space-14); border: 1px solid var(--cloro); border-radius: var(--radius); background: var(--cloro-soft); color: var(--cloro-ink); }
+  .conta-lbl { color: var(--cloro-ink); }
+  .stepper { display: flex; align-items: center; justify-content: space-between; }
+  .passo { width: 52px; height: 52px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-md); border: 1px solid var(--line); background: var(--surface); color: var(--cloro); cursor: pointer; }
+  .passo:disabled { opacity: 0.4; cursor: default; }
+  .conta-n { display: flex; align-items: baseline; gap: var(--space-6); font-size: var(--text-md); }
+  .conta-n .d { font-size: 40px; font-weight: 800; line-height: 1; color: var(--ink); }
+  .conta-foot { display: flex; justify-content: space-between; padding-top: var(--space-10); border-top: 1px solid color-mix(in srgb, var(--cloro) 25%, transparent); font-size: var(--text-sm); }
+  .conta-foot .m { font-weight: 600; }
 </style>

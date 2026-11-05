@@ -31,7 +31,10 @@ export const MESI = [
 
 export interface VoceGiorno {
   day: number;
+  /** Ore; per le mansioni pagate a turno il numero di turni (è quello che va nella colonna) */
   hours: number;
+  /** La mansione è pagata a turno: `hours` è il numero di turni */
+  aTurno?: boolean;
   /** Es. "sost greta spogl piccoli": finisce nella colonna delle note (R o U). */
   note?: string;
   /** Colonna della mansione (C–T); assente = Q */

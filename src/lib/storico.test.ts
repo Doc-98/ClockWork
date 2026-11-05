@@ -44,10 +44,10 @@ describe('riepilogo per mese', () => {
   ];
 
   it('dall’archivio: le sostituzioni sono i giorni con nota «sost…»', () => {
-    expect(riepilogoMese('2026-01', turni, arch)).toEqual({ ym: '2026-01', ore: 11.5, oreSost: 8.25, nSost: 2, fonte: 'archivio', euro: 0 });
+    expect(riepilogoMese('2026-01', turni, arch)).toEqual({ ym: '2026-01', ore: 11.5, turni: 0, oreSost: 8.25, nSost: 2, fonte: 'archivio', euro: 0 });
   });
   it('se l’app ha turni nel mese valgono quelli, non l’archivio; gli annullati non contano', () => {
-    expect(riepilogoMese('2026-09', turni, arch)).toEqual({ ym: '2026-09', ore: 7.5, oreSost: 5, nSost: 1, fonte: 'app', euro: 0 });
+    expect(riepilogoMese('2026-09', turni, arch)).toEqual({ ym: '2026-09', ore: 7.5, turni: 0, oreSost: 5, nSost: 1, fonte: 'app', euro: 0 });
   });
   it('mese senza dati', () => {
     expect(riepilogoMese('2026-03', turni, arch).fonte).toBe('nessuna');
@@ -113,7 +113,7 @@ describe('ore inserite a mano', () => {
   const turni = [turno('2026-09-14', 900, 1050)];
 
   it('valgono più dell’archivio, meno dei turni dell’app', () => {
-    expect(riepilogoMese('2025-12', turni, archivio([dic]), { '2025-12': 48.5 })).toEqual({ ym: '2025-12', ore: 48.5, oreSost: 0, nSost: 0, fonte: 'manuale', euro: 0 });
+    expect(riepilogoMese('2025-12', turni, archivio([dic]), { '2025-12': 48.5 })).toEqual({ ym: '2025-12', ore: 48.5, turni: 0, oreSost: 0, nSost: 0, fonte: 'manuale', euro: 0 });
     expect(riepilogoMese('2026-09', turni, undefined, { '2026-09': 99 }).fonte).toBe('app');
     expect(riepilogoMese('2026-07', turni, undefined, { '2026-07': 12 }).ore).toBe(12);
   });
@@ -169,5 +169,16 @@ describe.skipIf(!haveTemplate)('archivio di un istruttore', () => {
       { day: 4, hours: 4, col: 'O' }, { day: 5, hours: 5, col: 'O' }, { day: 4, hours: 3.5 }, { day: 5, hours: 4.25 },
     ], nome: 'Mario Rossi' });
     expect(leggiArchivio(out.bytes).mesi[0].voci).toEqual([{ day: 4, hours: 3.5 }, { day: 5, hours: 4.25 }]);
+  });
+});
+
+describe('archivio con mansioni pagate a turno', () => {
+  it('nelle colonne a turno il numero è di turni: non conta nelle ore, si paga a turno', () => {
+    const arch = { mesi: [{ ym: '2026-03', foglio: 'Marzo2026', voci: [{ day: 3, hours: 4, col: 'G' }, { day: 5, hours: 1.5, col: 'H' }] }] };
+    const imp = { mansioni: [{ col: 'G', tariffa: 10, paga: 'turno' as const }, { col: 'H', tariffa: 15 }] };
+    const r = riepilogoMese('2026-03', [], arch, undefined, imp);
+    expect(r.ore).toBe(1.5);
+    expect(r.turni).toBe(4);
+    expect(r.euro).toBe(40 + 22.5);
   });
 });

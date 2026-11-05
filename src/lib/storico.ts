@@ -1,6 +1,6 @@
 import { readWorkbook, serialToDate, type CellValue, type SheetData } from './xlsx/read';
 import { meseDalNomeFoglio } from './turni/parse';
-import { MANSIONE_ASSISTENTE, compensoTurni, oreDi, tariffaDi, type Impostazioni, type Turno } from './model';
+import { MANSIONE_ASSISTENTE, compensoTurni, oreDi, pagaDi, quantitaDi, type Impostazioni, type Turno } from './model';
 import type { VoceGiorno } from './foglio/genera';
 
 /**
@@ -147,7 +147,10 @@ export function leggiArchivio(bytes: Uint8Array): EsitoArchivio {
 
 export interface MeseStorico {
   ym: string;
+  /** Ore lavorate: per i turni dell'app tutte (dall'orario), per l'archivio solo le mansioni a ore */
   ore: number;
+  /** Turni delle mansioni pagate a turno (il numero scritto nel foglio ore) */
+  turni: number;
   /** Ore delle sostituzioni (nell'archivio: dei giorni con nota «sost…») */
   oreSost: number;
   nSost: number;
@@ -165,13 +168,13 @@ const arrotonda = (n: number) => Math.round(n * 100) / 100;
 export const eSostituzione = (nota?: string) => /^\s*sost/i.test(nota ?? '');
 
 export function riepilogoMese(ym: string, turni: Turno[], archivio?: Pick<Archivio, 'mesi'>, manuali?: OreManuali, imp?: Pick<Impostazioni, 'mansioni'>): MeseStorico {
-  const tar = (col?: string) => (imp ? tariffaDi(col ?? MANSIONE_ASSISTENTE, imp) : 0);
   const suoi = turni.filter((t) => !t.annullato && t.data.startsWith(`${ym}-`));
   if (suoi.length) {
     const sost = suoi.filter((t) => t.sostituisce);
     return {
       ym,
       ore: arrotonda(suoi.reduce((s, t) => s + oreDi(t), 0)),
+      turni: imp ? suoi.reduce((s, t) => { const q = quantitaDi(t, imp); return s + (q.aTurno ? q.valore : 0); }, 0) : 0,
       oreSost: arrotonda(sost.reduce((s, t) => s + oreDi(t), 0)),
       nSost: sost.length,
       fonte: 'app',
@@ -179,21 +182,28 @@ export function riepilogoMese(ym: string, turni: Turno[], archivio?: Pick<Archiv
     };
   }
   const aMano = manuali?.[ym];
-  // Le ore scritte a mano non hanno mansione: valgono alla tariffa della tua prima mansione
-  if (aMano !== undefined) return { ym, ore: arrotonda(aMano), oreSost: 0, nSost: 0, fonte: 'manuale', euro: arrotonda(aMano * (imp?.mansioni[0]?.tariffa ?? 0)) };
+  // Le ore scritte a mano non hanno mansione: valgono alla tariffa della tua prima mansione a ore
+  if (aMano !== undefined) {
+    const tar = imp ? pagaDi(imp.mansioni.find((m) => (m.paga ?? 'ore') === 'ore')?.col ?? '', imp, ym).tariffa : 0;
+    return { ym, ore: arrotonda(aMano), turni: 0, oreSost: 0, nSost: 0, fonte: 'manuale', euro: arrotonda(aMano * tar) };
+  }
   const a = archivio?.mesi.find((m) => m.ym === ym);
   if (a) {
-    const sost = a.voci.filter((v) => eSostituzione(v.note));
+    // Nelle colonne delle mansioni pagate a turno (in quel mese) il numero è di turni, non di ore
+    const paga = (col?: string) => (imp ? pagaDi(col ?? MANSIONE_ASSISTENTE, imp, ym) : { paga: 'ore' as const, tariffa: 0 });
+    const aOre = a.voci.filter((v) => paga(v.col).paga === 'ore');
+    const sost = aOre.filter((v) => eSostituzione(v.note));
     return {
       ym,
-      ore: arrotonda(a.voci.reduce((s, v) => s + v.hours, 0)),
+      ore: arrotonda(aOre.reduce((s, v) => s + v.hours, 0)),
+      turni: arrotonda(a.voci.filter((v) => paga(v.col).paga === 'turno').reduce((s, v) => s + v.hours, 0)),
       oreSost: arrotonda(sost.reduce((s, v) => s + v.hours, 0)),
-      nSost: sost.length,
+      nSost: a.voci.filter((v) => eSostituzione(v.note)).length,
       fonte: 'archivio',
-      euro: arrotonda(a.voci.reduce((s, v) => s + v.hours * tar(v.col), 0)),
+      euro: arrotonda(a.voci.reduce((s, v) => s + v.hours * paga(v.col).tariffa, 0)),
     };
   }
-  return { ym, ore: 0, oreSost: 0, nSost: 0, fonte: 'nessuna', euro: 0 };
+  return { ym, ore: 0, turni: 0, oreSost: 0, nSost: 0, fonte: 'nessuna', euro: 0 };
 }
 
 /** Gli ultimi `n` mesi fino a `fino` compreso (YYYY-MM), dal più vecchio */
@@ -238,13 +248,13 @@ export interface AnnoStorico {
  * Le soglie contano i compensi per data di pagamento: nell'anno `anno` entrano i mesi di lavoro
  * da dicembre dell'anno prima a novembre, fino al mese `fino` compreso.
  */
-export function riepilogoAnno(anno: number, fino: string, turni: Turno[], archivio?: Pick<Archivio, 'mesi'>, manuali?: OreManuali): AnnoStorico {
+export function riepilogoAnno(anno: number, fino: string, turni: Turno[], archivio?: Pick<Archivio, 'mesi'>, manuali?: OreManuali, imp?: Pick<Impostazioni, 'mansioni'>): AnnoStorico {
   const mesi: string[] = [];
   for (let ym = ymChiave(anno - 1, 12); ym <= ymChiave(anno, 11) && ym <= fino; ym = spostaChiave(ym, 1)) mesi.push(ym);
   let ore = 0;
   const mancanti: string[] = [];
   for (const ym of mesi) {
-    const r = riepilogoMese(ym, turni, archivio, manuali);
+    const r = riepilogoMese(ym, turni, archivio, manuali, imp);
     ore += r.ore;
     if (r.fonte === 'nessuna') mancanti.push(ym);
   }
@@ -325,7 +335,7 @@ export function compensoAnno(a: AnnoStorico, imp: Pick<Impostazioni, 'mansioni' 
   for (const ym of a.mesi) {
     const r = riepilogoMese(ym, turni, archivio, manuali, imp);
     lordo += r.euro;
-    detrazioni += detrazioneMese(ym, imp.casellario, r.ore);
+    detrazioni += detrazioneMese(ym, imp.casellario, r.ore + r.turni);
   }
   return { euro: Math.max(0, Math.round((lordo - detrazioni) * 100) / 100), detrazioni };
 }

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
 import { confronta, applicaImport, applicaRevisione, casiDoppi, applicaScelte, leggiFileTurni, chiaveDoppio, chiaveTurno, pianoAggiornamento, chiCeraPrima, type FoglioTurniLetto } from './importa';
 import type { TurnoLetto } from './parse';
-import type { Turno } from '../model';
+import { IMPOSTAZIONI_DEFAULT, type Turno } from '../model';
 import { vociDaTurni } from '../foglio/daTurni';
 
 const letto = (data: string, area: TurnoLetto['area'], inizio: number, fine: number, extra: Partial<TurnoLetto> = {}): TurnoLetto => ({
@@ -86,7 +86,7 @@ describe('foglio ore dai turni', () => {
       turno('2026-10-02', 'atrio', 570, 810, { origine: 'manuale', nota: 'sost simone atrio' }),
       turno('2026-10-05', 'atrio', 930, 1155, { annullato: true }),
       turno('2026-11-02', 'atrio', 930, 1155),
-    ], 2026, 10);
+    ], 2026, 10, IMPOSTAZIONI_DEFAULT);
     expect(voci).toEqual([{ day: 2, hours: 9, note: 'sost simone atrio' }]);
   });
 });

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { dati } from '../lib/dati.svelte';
-  import { etichettaTurno, conAree, daHHMM, hhmm, oreDi, segnaModifica, type Turno } from '../lib/model';
+  import { etichettaTurno, conAree, daHHMM, hhmm, quantitaDi, segnaModifica, type Turno } from '../lib/model';
   import { formatOre } from '../lib/ore';
   import Icona from './Icona.svelte';
 
@@ -10,6 +10,11 @@
    */
   let { turno, aperto, apri }: { turno: Turno; aperto: boolean; apri: (aperto: boolean) => void } = $props();
 
+  // Le mansioni pagate a turno contano i turni, non le ore
+  const quanto = $derived.by(() => {
+    const q = quantitaDi(turno, dati.impostazioni);
+    return q.aTurno ? `${q.valore} ${q.valore === 1 ? 'turno' : 'turni'}` : `${formatOre(q.valore)} h`;
+  });
   const etichetta = $derived(
     turno.nome?.trim() || (turno.sostituisce ? `Sost. ${turno.sostituisce}` : `${etichettaTurno(turno, dati.impostazioni)}${turno.postazione ? ' · P' + turno.postazione : ''}${turno.presa ? ' · presa' : ''}`),
   );
@@ -41,7 +46,7 @@
       <span class="m ora">{hhmm(turno.inizio)}–{hhmm(turno.fine)}</span>
       <span class="tag t-{conAree(turno) ? turno.area : 'altro'}">{etichetta}</span>
     </span>
-    <span class="m ore">{turno.annullato ? 'annullato' : `${formatOre(oreDi(turno))} h`}</span>
+    <span class="m ore">{turno.annullato ? 'annullato' : quanto}</span>
     <Icona nome="giu" class="chev" />
   </button>
   {#if aperto}

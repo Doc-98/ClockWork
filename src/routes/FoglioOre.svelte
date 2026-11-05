@@ -17,12 +17,16 @@
   $effect(() => vista.segna('foglio', ym));
   const GG = ['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'];
 
-  const voci = $derived(vociDaTurni(dati.turni, ym.year, ym.month));
-  const totale = $derived(Math.round(voci.reduce((s, v) => s + v.hours, 0) * 100) / 100);
+  const voci = $derived(vociDaTurni(dati.turni, ym.year, ym.month, dati.impostazioni));
+  const totale = $derived(Math.round(voci.reduce((s, v) => s + (v.aTurno ? 0 : v.hours), 0) * 100) / 100);
+  // Mansioni pagate a turno: nel foglio va il numero di turni, contato a parte dalle ore
+  const nTurniPagati = $derived(voci.reduce((s, v) => s + (v.aTurno ? v.hours : 0), 0));
+  const conTurni = $derived(voci.some((v) => v.aTurno));
+  const quanto = (v: { hours: number; aTurno?: boolean }) => (v.aTurno ? `${v.hours} ${v.hours === 1 ? 'turno' : 'turni'}` : `${formatOre(v.hours)}${conTurni ? ' h' : ''}`);
   const turniMese = $derived(dati.turniDelMese(ym.year, ym.month).filter((t) => !t.annullato));
   const nSost = $derived(turniMese.filter((t) => t.sostituisce).length);
   // Casellario: 5 € tolti dallo stipendio che paga questo mese (di solito ottobre, per il lavoro di settembre)
-  const detrazione = $derived(detrazioneMese(ymStr(ym), dati.impostazioni.casellario, totale));
+  const detrazione = $derived(detrazioneMese(ymStr(ym), dati.impostazioni.casellario, totale + nTurniPagati));
   const compenso = $derived(Math.max(0, compensoTurni(turniMese, dati.impostazioni) - detrazione));
   const MESI_MIN = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
   const meseStipendio = $derived(MESI_MIN[Number(mesePagamento(ymStr(ym)).slice(5, 7)) - 1]);
@@ -161,8 +165,13 @@
 
   <div class="card riepilogo">
     <div class="stats">
-      <div class="stat"><span class="v d">{formatOre(totale)}<span class="u"> h</span></span><span class="u">totale</span></div>
-      <div class="stat"><span class="v d">{turniMese.length}</span><span class="u">{turniMese.length === 1 ? 'turno' : 'turni'}</span></div>
+      {#if conTurni}
+        <div class="stat"><span class="v d">{formatOre(totale)}<span class="u"> h</span></span><span class="u">a ore</span></div>
+        <div class="stat"><span class="v d">{nTurniPagati}</span><span class="u">{nTurniPagati === 1 ? 'turno pagato' : 'turni pagati'}</span></div>
+      {:else}
+        <div class="stat"><span class="v d">{formatOre(totale)}<span class="u"> h</span></span><span class="u">totale</span></div>
+        <div class="stat"><span class="v d">{turniMese.length}</span><span class="u">{turniMese.length === 1 ? 'turno' : 'turni'}</span></div>
+      {/if}
       <div class="stat"><span class="v d">{nSost}</span><span class="u">{nSost === 1 ? 'sostituzione' : 'sostituzioni'}</span></div>
     </div>
     <button class="compenso" aria-pressed={compensoVisibile} onclick={() => (compensoVisibile = !compensoVisibile)}>
@@ -182,7 +191,7 @@
   </div>
 
   <div class="card tab">
-    <div class="tr th"><span>Gg</span><span></span><span>{piuMansioni ? 'Mansione · nota' : `Nota (col. ${colNote})`}</span><span class="r">Ore</span></div>
+    <div class="tr th"><span>Gg</span><span></span><span>{piuMansioni ? 'Mansione · nota' : `Nota (col. ${colNote})`}</span><span class="r">{conTurni ? 'Quanto' : 'Ore'}</span></div>
     {#each voci as v (`${v.day}-${v.col ?? MANSIONE_ASSISTENTE}`)}
       <a class="tr focus-inset" href={`#/mese/${ymStr(ym)}?g=${isoGiorno(v.day)}`}>
         <span class="m b">{v.day}</span>
@@ -192,7 +201,7 @@
         {:else}
           <span class="nota">{v.note ?? '—'}</span>
         {/if}
-        <span class="m r">{formatOre(v.hours)}</span>
+        <span class="m r">{quanto(v)}</span>
       </a>
     {:else}
       <p class="muted small vuoto">Nessun turno in {MESI[ym.month - 1].toLowerCase()}.</p>
@@ -205,6 +214,8 @@
   <p class="muted small nomargin">
     {formatoCondivisione === 'pdf'
       ? 'Questo telefono non permette di condividere file Excel: Condividi invia il PDF. L’Excel lo scarichi con il pulsante accanto.'
+      : conTurni
+        ? `Compilato sul modello della società: in ogni colonna le ore, o il numero di turni per le mansioni pagate a turno, ognuna con il suo totale; note in colonna ${colNote}, il tuo nome e il mese in testa.`
       : piuMansioni
         ? `Compilato sul modello della società: ogni mansione nella sua colonna, note e sostituzioni in colonna ${colNote}, il tuo nome e il mese in testa.`
         : `Compilato sul modello della società: ore in colonna ${voci[0]?.col ?? MANSIONE_ASSISTENTE}, note in colonna ${colNote}, il tuo nome e il mese in testa.`}
@@ -238,7 +249,7 @@
   .storico-txt .small { font-weight: 400; }
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .tab { overflow: hidden; }
-  .tr { display: grid; grid-template-columns: 30px 36px 1fr 52px; align-items: center; gap: var(--space-6); min-height: 44px; padding: 0 var(--space-14); border-top: 1px solid var(--line-soft); font-size: var(--text-md); color: var(--ink); text-decoration: none; }
+  .tr { display: grid; grid-template-columns: 30px 36px minmax(0, 1fr) auto; align-items: center; gap: var(--space-6); min-height: 44px; padding: 0 var(--space-14); border-top: 1px solid var(--line-soft); font-size: var(--text-md); color: var(--ink); text-decoration: none; }
   .th { border-top: none; min-height: 32px; font-size: var(--text-2xs); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
   .b { font-weight: 600; }
   .r { text-align: right; }

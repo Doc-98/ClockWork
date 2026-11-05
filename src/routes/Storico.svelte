@@ -13,14 +13,14 @@
   const oggi = ymStr(ymOggi());
   const anno = ymOggi().year;
 
-  const mesi = $derived(ultimiMesi(oggi).map((ym) => riepilogoMese(ym, dati.turni, dati.archivio, dati.oreManuali)));
+  const mesi = $derived(ultimiMesi(oggi).map((ym) => riepilogoMese(ym, dati.turni, dati.archivio, dati.oreManuali, dati.impostazioni)));
   const massimo = $derived(Math.max(10, ...mesi.map((m) => m.ore)));
   const totale12 = $derived(mesi.reduce((s, m) => s + m.ore, 0));
   const sost12 = $derived(mesi.reduce((s, m) => s + m.oreSost, 0));
   const nSost12 = $derived(mesi.reduce((s, m) => s + m.nSost, 0));
 
   // Le soglie contano i compensi per data di pagamento: il lavoro di dicembre si incassa a gennaio
-  const annoSolare = $derived(riepilogoAnno(anno, oggi, dati.turni, dati.archivio, dati.oreManuali));
+  const annoSolare = $derived(riepilogoAnno(anno, oggi, dati.turni, dati.archivio, dati.oreManuali, dati.impostazioni));
   const compenso = $derived(calcolaCompenso(annoSolare, dati.impostazioni, dati.turni, dati.archivio, dati.oreManuali));
   const compensoAnno = $derived(compenso.euro);
   /** La barra arriva a 15.000 €, o poco oltre se li hai superati */
@@ -46,7 +46,7 @@
   const oreValide = $derived(oreNum !== null && !Number.isNaN(oreNum) && oreNum >= 0 && oreNum <= 400);
   function apriModifica(ym: string) {
     modifica = ym;
-    const r = mesi.find((m) => m.ym === ym) ?? riepilogoMese(ym, dati.turni, dati.archivio, dati.oreManuali);
+    const r = mesi.find((m) => m.ym === ym) ?? riepilogoMese(ym, dati.turni, dati.archivio, dati.oreManuali, dati.impostazioni);
     oreInput = r.fonte === 'nessuna' ? '' : formatOre(r.ore);
   }
   async function salvaOre() {
@@ -234,7 +234,7 @@
             {#if dettaglio.fonte === 'nessuna'}
               Nessun dato per questo mese
             {:else}
-              {`${formatOre(dettaglio.ore)} h`}{dettaglio.nSost ? ` · ${dettaglio.nSost} ${dettaglio.nSost === 1 ? 'sostituzione' : 'sostituzioni'} (${formatOre(dettaglio.oreSost)} h)` : ''}{` · ${dettaglio.fonte === 'app' ? 'da ClockWork' : dettaglio.fonte === 'manuale' ? 'inserite a mano' : 'dall’archivio'}`}
+              {`${formatOre(dettaglio.ore)} h`}{dettaglio.turni ? ` · ${dettaglio.turni} ${dettaglio.turni === 1 ? 'turno' : 'turni'} a turno` : ''}{dettaglio.nSost ? ` · ${dettaglio.nSost} ${dettaglio.nSost === 1 ? 'sostituzione' : 'sostituzioni'} (${formatOre(dettaglio.oreSost)} h)` : ''}{` · ${dettaglio.fonte === 'app' ? 'da ClockWork' : dettaglio.fonte === 'manuale' ? 'inserite a mano' : 'dall’archivio'}`}
             {/if}
           </span>
         </div>

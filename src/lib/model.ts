@@ -88,12 +88,27 @@ export const COLONNE_FOGLIO: { col: string; nome: string }[] = [
 /** La mansione degli assistenti spogliatoio: quella dei turni del foglio turni e dei turni salvati prima delle mansioni */
 export const MANSIONE_ASSISTENTE = 'Q';
 
-/** Una mansione che svolgi: la colonna del foglio ore, un nome tuo (facoltativo) e la tariffa oraria */
+/** Come è pagata una mansione: a ore (€/h) o a turno (€ per turno, es. lezioni da 45 minuti) */
+export type Paga = 'ore' | 'turno';
+
+/** Come era pagata una mansione fino a un certo mese, prima di un cambio di tipo di paga */
+export interface PagaPrecedente {
+  /** Ultimo mese (YYYY-MM) in cui valeva */
+  fino: string;
+  paga: Paga;
+  tariffa: number;
+}
+
+/** Una mansione che svolgi: la colonna del foglio ore, un nome tuo (facoltativo) e la tariffa */
 export interface Mansione {
   col: string;
   nome?: string;
-  /** €/h */
+  /** €/h, oppure € a turno se `paga` è 'turno' */
   tariffa: number;
+  /** Assente = a ore */
+  paga?: Paga;
+  /** Come era pagata nei mesi prima dell'ultimo cambio di tipo: i mesi consegnati restano com'erano */
+  prima?: PagaPrecedente[];
 }
 
 export type Profilo = 'assistente' | 'istruttore';
@@ -127,6 +142,8 @@ export interface Turno {
   mansione?: string;
   /** Turni creati insieme con «ogni settimana fino al»: stesso id di serie */
   serie?: string;
+  /** Mansioni pagate a turno: quanti turni (lezioni) fai in questo orario; è il numero che va nel foglio ore */
+  turni?: number;
 }
 
 export interface Impostazioni {
@@ -153,7 +170,7 @@ export function completaImpostazioni(imp?: Partial<Impostazioni> & { tariffa?: n
   const { tariffa, ...resto } = imp ?? {};
   // Fino alla 0.10 c'era una sola tariffa, quella degli assistenti: diventa la mansione Q
   const mansioni = Array.isArray(imp?.mansioni)
-    ? imp.mansioni.filter((m) => COLONNE_FOGLIO.some((c) => c.col === m?.col)).map((m) => ({ ...m, tariffa: Number(m.tariffa) || 0 }))
+    ? imp.mansioni.filter((m) => COLONNE_FOGLIO.some((c) => c.col === m?.col)).map((m) => ({ ...m, tariffa: Number(m.tariffa) || 0, ...(m.paga === 'turno' ? { paga: 'turno' as const } : { paga: undefined }) }))
     : [{ col: MANSIONE_ASSISTENTE, tariffa: typeof tariffa === 'number' ? tariffa : 9 }];
   return {
     ...IMPOSTAZIONI_DEFAULT,
@@ -173,14 +190,111 @@ export function nomeMansione(col: string, imp?: Partial<Pick<Impostazioni, 'mans
   return imp?.mansioni?.find((m) => m.col === col)?.nome?.trim() || COLONNE_FOGLIO.find((c) => c.col === col)?.nome || col;
 }
 
-/** Tariffa di una mansione; una mansione che non hai più (o mai avuta) vale come la prima delle tue */
-export function tariffaDi(col: string, imp: Pick<Impostazioni, 'mansioni'>): number {
-  return imp.mansioni.find((m) => m.col === col)?.tariffa ?? imp.mansioni[0]?.tariffa ?? 0;
+/**
+ * Come è pagata una mansione in un mese (YYYY-MM; assente = adesso): tipo di paga e tariffa.
+ * Una mansione che non hai più (o mai avuta) vale a ore, alla tariffa della prima delle tue pagate a ore.
+ */
+export function pagaDi(col: string, imp: Pick<Impostazioni, 'mansioni'>, ym?: string): { paga: Paga; tariffa: number } {
+  const m = imp.mansioni.find((x) => x.col === col);
+  if (!m) return { paga: 'ore', tariffa: (imp.mansioni.find((x) => (x.paga ?? 'ore') === 'ore') ?? imp.mansioni[0])?.tariffa ?? 0 };
+  const vecchia = ym ? [...(m.prima ?? [])].sort((a, b) => a.fino.localeCompare(b.fino)).find((p) => ym <= p.fino) : undefined;
+  return vecchia ? { paga: vecchia.paga, tariffa: vecchia.tariffa } : { paga: m.paga ?? 'ore', tariffa: m.tariffa };
 }
 
-/** Compenso di un elenco di turni (gli annullati non contano), ognuno alla tariffa della sua mansione */
+/** Tariffa di una mansione (€/h o € a turno, vedi `pagaDi`) */
+export function tariffaDi(col: string, imp: Pick<Impostazioni, 'mansioni'>, ym?: string): number {
+  return pagaDi(col, imp, ym).tariffa;
+}
+
+export const aTurno = (col: string, imp: Pick<Impostazioni, 'mansioni'>, ym?: string) => pagaDi(col, imp, ym).paga === 'turno';
+
+/** Numero di turni di un turno pagato a turno (almeno 1 se non l'hai indicato) */
+export const turniDi = (t: Pick<Turno, 'turni'>) => (t.turni && t.turni > 0 ? t.turni : 1);
+
+/** Cosa va nel foglio ore per questo turno: le ore, o il numero di turni se la mansione è pagata a turno */
+export function quantitaDi(t: Turno, imp: Pick<Impostazioni, 'mansioni'>): { valore: number; aTurno: boolean } {
+  return aTurno(mansioneDi(t), imp, t.data.slice(0, 7)) ? { valore: turniDi(t), aTurno: true } : { valore: oreDi(t), aTurno: false };
+}
+
+/** Compenso di un elenco di turni (gli annullati non contano), ognuno come è pagata la sua mansione in quel mese */
 export function compensoTurni(turni: Turno[], imp: Pick<Impostazioni, 'mansioni'>): number {
-  return Math.round(turni.filter((t) => !t.annullato).reduce((s, t) => s + oreDi(t) * tariffaDi(mansioneDi(t), imp), 0) * 100) / 100;
+  return Math.round(turni.filter((t) => !t.annullato).reduce((s, t) => s + quantitaDi(t, imp).valore * tariffaDi(mansioneDi(t), imp, t.data.slice(0, 7)), 0) * 100) / 100;
+}
+
+/** Ore e turni di un elenco di turni (gli annullati non contano): le ore solo delle mansioni a ore */
+export function totaliTurni(turni: Turno[], imp: Pick<Impostazioni, 'mansioni'>): { ore: number; turni: number } {
+  let ore = 0;
+  let n = 0;
+  for (const t of turni) {
+    if (t.annullato) continue;
+    const q = quantitaDi(t, imp);
+    if (q.aTurno) n += q.valore;
+    else ore += q.valore;
+  }
+  return { ore: Math.round(ore * 100) / 100, turni: n };
+}
+
+/**
+ * Numero di turni da proporre per un nuovo turno pagato a turno: quello dell'ultima volta con la
+ * stessa mansione e lo stesso orario, altrimenti dell'ultima volta con la stessa mansione, altrimenti 1.
+ */
+export function turniProposti(turni: Turno[], col: string, inizio?: number | null, fine?: number | null): number {
+  const suoi = turni.filter((t) => mansioneDi(t) === col && t.turni).sort(ordinaTurni);
+  const stessoOrario = suoi.filter((t) => t.inizio === inizio && t.fine === fine).at(-1);
+  return (stessoOrario ?? suoi.at(-1))?.turni ?? 1;
+}
+
+// ---------------------------------------------------------------------------
+// Cambio del tipo di paga di una mansione
+
+const ymDi = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+const ymPrima = (ym: string) => {
+  const [y, m] = ym.split('-').map(Number);
+  return m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, '0')}`;
+};
+
+/** Nei primi giorni del mese il foglio del mese prima può non essere ancora consegnato */
+export const GIORNI_PER_MESE_PRIMA = 3;
+
+/** Da che mese parte un cambio di paga fatto oggi: il mese corrente, o il precedente se lo chiedi nei primi giorni */
+export function inizioCambio(oggi: Date, ancheMesePrima: boolean): string {
+  const ym = ymDi(oggi);
+  return ancheMesePrima && oggi.getDate() <= GIORNI_PER_MESE_PRIMA ? ymPrima(ym) : ym;
+}
+
+/** I turni toccati da un cambio di paga: quelli della mansione dal mese `da` in poi */
+export function turniDaCambiare(turni: Turno[], col: string, da: string): Turno[] {
+  return turni.filter((t) => mansioneDi(t) === col && t.data >= `${da}-01`);
+}
+
+/**
+ * Cambia tipo di paga (e tariffa) di una mansione dal mese `da` in poi. I mesi prima restano come
+ * erano: la vecchia paga si ricorda fino al mese prima di `da`. I turni da `da` in poi passano alla
+ * nuova paga: a turno prendono `turniCiascuno` turni, a ore perdono il numero di turni.
+ */
+export function cambiaPaga(
+  mansioni: Mansione[], turni: Turno[], col: string,
+  nuova: { paga: Paga; tariffa: number }, da: string, turniCiascuno = 1,
+): { mansioni: Mansione[]; turni: Turno[] } {
+  const fino = ymPrima(da);
+  const out = mansioni.map((m) => {
+    if (m.col !== col) return m;
+    // Le paghe precedenti che arrivavano oltre `fino` sono superate da questo cambio
+    const prima = [...(m.prima ?? []).filter((p) => p.fino < fino), { fino, paga: m.paga ?? 'ore', tariffa: m.tariffa }];
+    const { paga: _p, ...resto } = m;
+    return { ...resto, tariffa: nuova.tariffa, prima, ...(nuova.paga === 'turno' ? { paga: 'turno' as const } : {}) };
+  });
+  const toccati = new Set(turniDaCambiare(turni, col, da).map((t) => t.id));
+  const n = Math.max(1, Math.round(turniCiascuno));
+  return {
+    mansioni: out,
+    turni: turni.map((t) => {
+      if (!toccati.has(t.id)) return t;
+      if (nuova.paga === 'turno') return { ...t, turni: t.turni ?? n };
+      const { turni: _t, ...resto } = t;
+      return resto;
+    }),
+  };
 }
 
 /** Le aree (spogliatoi, atrio) hanno senso solo per i turni da assistente spogliatoio */
@@ -267,7 +381,7 @@ const nellAmbito = (x: Turno, originale: Turno, ambito: AmbitoSerie) =>
   x.serie === originale.serie && (ambito === 'tutti' || (ambito === 'successivi' && x.data >= originale.data) || x.id === originale.id);
 
 /** I campi che una modifica porta sugli altri turni della serie (la data si sposta dello stesso numero di giorni) */
-const CAMPI_SERIE = ['area', 'postazione', 'inizio', 'fine', 'mansione', 'sostituisce', 'nota', 'nome', 'promemoria', 'annullato'] as const;
+const CAMPI_SERIE = ['area', 'postazione', 'inizio', 'fine', 'mansione', 'sostituisce', 'nota', 'nome', 'promemoria', 'annullato', 'turni'] as const;
 
 /**
  * Applica a una serie la modifica fatta su uno dei suoi turni: solo i campi cambiati, così ciò che
